@@ -1,0 +1,30 @@
+# macOS Specific Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.Spotlight-V100
+.Trashes
+VolumeIcon.icns
+com.apple.timemachine.donotpresent
+
+# OpenSCAD Backup and Meta Files
+*.scad~
+*.scad.bak
+*.scad.gui
+
+# 3D Printing / CAD Exports (Add a '#' to untrack if you want to explicitly check in models)
+# *.stl
+# *.3mf
+# *.gcode
+# *.obj
+
+# VS Code / Workspace Configuration
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/launch.json
+.history/
+*.log
