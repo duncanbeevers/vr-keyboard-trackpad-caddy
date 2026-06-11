@@ -20,14 +20,19 @@ All dimensions must remain fully parametric. Reference these standard dimensions
 
 ## 🛠️ Multi-Step Mechanical Plan
 
-### Step 1: Horizontal Splitting for FDM Printability (Critical)
+### Step 1: Integrated Single-Piece Chassis Design Support-Free FDM Printability (Critical)
 
-Printing a solid hollow "subterranean tunnel" flat on an FDM printer is highly discouraged because the ceiling of the tunnel (recessed beneath the keyboard well) is a massive overhang that would require dense support material, leaving a rough and high-friction sliding ceiling.
+Printing a hollow "subterranean tunnel" or hollow enclosure flat on an FDM printer ordinarily demands dense support structures inside the cavity, leaving high-friction layer interfaces and tedious cleanup.
 
-- **Action**: Split the Chassis into two parts:
-  1. `lap_dock_chassis_top()`: Houses the keyboard recessed pocket (completely pocketed to hide any non-plastic assembly hardware beneath the keyboard body), top structural walls, and back USB-C pass-throughs.
-  2. `lap_dock_chassis_base()`: Houses the lower support plate, the sliding cam tracks (open-faced upward), and bottom lap-friendly curved bevels.
-- **Reverse Assembly Method**: Secure the two halves by screwing **downwards** through countersunk holes inside the bottom profile floor of the keyboard recessed pocket down into brass heat-set inserts pressed into bosses on the bottom plate. Placing the screws inside the keyboard well completely hides all structural assembly hardware underneath the keyboard itself once populated.
+- **Action**: Consolidate the entire chassis into a single integrated print (`lap_dock_chassis()`) without a separate floor plate or any physical assembly hardware (screws or inserts).
+- **Core Geometry**:
+  - The base of the chassis incorporates the open-bottom trackpad tunnel.
+  - The keyboard pocket sits at the top, completely open-bottomed down into the lower tunnel.
+  - An internal dividing ledge (`SEP_THICKNESS = 3.0`) runs around the inner borders of the keyboard pocket, allowing the keyboard to hang perfectly while allowing the sliding tray to move suspended below.
+- **Orientation**: Print the single-piece chassis **Face Down (Top Bezel on Bed)**.
+  - This provides a pristine, high-finish surface on the master top bezel.
+  - The narrow (`6.0 mm`) keyboard support shelves and M3 lateral cam slots can easily be bridged support-free.
+  - Since the tunnel has an open bottom, it terminates at the top of the print bed and is open to the air, requiring absolutely zero support material!
 
 ### Step 2: Hinge-Down and Lift-to-Flush Cam Track Architecture
 
@@ -49,14 +54,18 @@ To guide the tray's movement, implement a dual curved tracking path on each late
 Avoid plastic snaps which wear down over time. Excellent mechanical locking is achieved using a profile-recessed track:
 
 - **The Detente Dip**: At the fully-collapsed/docked position (rear-most end of travel), the guide tracks feature a small downward vertical drop of $2-3\text{ mm}$.
-- **Locking**: When pushed fully in, the tray's pins slide up and over a small ramp, then drop down into this pocket under gravity (and optionally pulled down by integrated neodymium magnets). In this dropped state, the tray cannot slide forward because the pins are trapped.
-- **Unlocking**: Pushing up on the front finger scoop or lifting the exposed thin front edge of the trackpad rotates/lifts the pins up and back over the ramp, aligning them with the horizontal track to slide out smoothly.
+- **Locking**: When pushed fully in, the tray's pins slide up and over a small ramp, then drop down into this pocket under gravity. In this dropped state, the tray cannot slide forward because the pins are trapped.
+- **Unlocking**: Pushing up on the bottom face of the trackpad through its open frame structure rotates/lifts the pins up and back over the ramp, aligning them with the horizontal track to slide out smoothly.
 
-### Step 4: Coaligned Rear Charging Ports & Flush Bezel Layout
+### Step 4: Coaligned Rear Charging & Switch Ports with Open-Frame Layout
 
-- **No Palm Rest Bezel**: The trackpad tray must closely track the outer perimeter of the Apple Magic Trackpad with minimal wall additions to keep profile volume minimal.
-- **Flush Edge Alignment**: When collapsed, the trackpad+tray and keyboard+tray assemblies must share perfect flush front boundaries (the thin front face of the keyboard and the thin front face of the trackpad opposing the rear power/charging ports).
-- **Simultaneous Charging**: Generous clearance port windows ($+2-3\text{ mm}$ over port size) are cut out of the same rear face of the shell to accommodate concurrent charging.
+- **No Front Cutouts or Palm Bezels**: The front face is a completely solid, flush plane. All front finger notches and tray finger scoops have been removed.
+- **Open-Frame Hangers**:
+  - To minimize printed plastic weight and maximize ergonomics, both the keyboard tray and trackpad tray are open-bottom hanger structures with thin, high-integrity support shelves.
+  - **Easy Ejection**: Because there are no floors, you easily remove either device simply by reaching through the under-openings and pushing them up.
+- **Rear Access Control Slots**: The charging ports and power toggles sit grouped entirely along the rear face:
+  - **Keyboard**: A single right-offset window (`KB_PORT_X = 100.0`, `KB_PORT_W_TOTAL = 60.0`) accommodates both its USB-C slot and slide power toggle simultaneously, with no central keyboard-level slot on the chassis.
+  - **Trackpad Sled**: Incorporates a rear-center USB-C cutout alongside a rear-right slide switch clearance slot, aligning with matching pass-through slots on the back wall of the chassis base plate.
 
 ### Step 5: High-Comfort Lap Ergonomics
 
