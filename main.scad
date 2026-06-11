@@ -110,7 +110,9 @@ TRACK_WALL_SPAN_X = TUNNEL_W + TRACK_WALL_W;
 TRACK_WALL_Z = -CHASSIS_H/2 + TUNNEL_H/2 - 0.01;
 
 // Track Longitudinal Baselines
-Y_REAR_DOCK = -CHASSIS_D/2 + 20.0;
+FRONT_CLOSED_CLEARANCE = 1.0; // Keep sled front just inside chassis front when docked
+Y_CLOSED_TRAY_CENTER = -CHASSIS_D/2 + SLED_D/2 + FRONT_CLOSED_CLEARANCE;
+Y_REAR_DOCK = Y_CLOSED_TRAY_CENTER - PIN_DIST/2;
 Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
 
 // Definition of Cam Track Coordinates (Y, Z)
