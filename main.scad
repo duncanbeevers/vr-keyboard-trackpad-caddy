@@ -4,6 +4,36 @@ include <BOSL2/std.scad>
 $fn = 32;
 
 // ============================================================================
+// VISUALIZATION & CONFIGURATION CONTROL
+// ============================================================================
+
+// Optional non-printable hardware visualization
+SHOW_NON_PRINTABLE_PINS = true;
+PIN_COLOR = "gold";
+
+// Visual finish palette
+CHASSIS_COLOR = "lightgray";
+CHASSIS_INNER_COLOR = "gainsboro";
+TRAY_COLOR = "dimgray";
+TRAY_INNER_COLOR = "slategray";
+
+// Interactively control rendering mode via editor
+SHOW_ASSEMBLED = true; 
+EXTEND_TRAY = false;    // Simulates sliding deployment path mechanics
+RENDER_CHASSIS = true;  // Allows rendering chassis alone
+RENDER_TRAY = true;     // Allows rendering trackpad sled alone
+CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
+
+// OpenSCAD animation controls ($t runs from 0.0 to 1.0)
+ANIMATE_TRAY = true;
+ANIM_EXTEND_PHASE = 0.70; // 0..70%: extend, 70..100%: tilt
+ANIM_TILT_DEG = 15.0;
+
+// Cut-away clipping block settings
+CUTAWAY_KEEP_RIGHT_HALF = true;
+CUTAWAY_MARGIN = 20.0;
+
+// ============================================================================
 // 📐 ACCESSORY DIMENSIONS & PARAMETRIC VARIABLES
 // ============================================================================
 
@@ -68,6 +98,7 @@ Z_LOWER = Z_SLED_TRAVEL + Z_FRONT_PIN_REL; // Lower track centerline baseline
 // Slot Depth and Width configurations
 SLOT_W = PIN_DIAM + SLIDE_SLOP;
 SLOT_DEPTH = WALL_THICKNESS * 3; 
+PIN_PROTRUSION = 1.0; // Side protrusion of printed guide pins beyond sled outer wall
 
 // Track Longitudinal Baselines
 Y_REAR_DOCK = -CHASSIS_D/2 + 20.0;
@@ -76,22 +107,22 @@ Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
 // Definition of Cam Track Coordinates (Y, Z)
 rear_track_pts = [
     [Y_REAR_DOCK, Z_UPPER - 2.5],             // 1. Docked Detente Dip
-    [Y_REAR_DOCK + 6.0, Z_UPPER],             // 2. Clear out of lock
-    [Y_REAR_DOCK + 0.8 * TRAVEL, Z_UPPER],    // 3. Main horizontal glide rail
-    [Y_REAR_DOCK + TRAVEL, Z_UPPER + RAMP_UP] // 4. Hard-stop extension lift
+    [Y_REAR_DOCK - 6.0, Z_UPPER],             // 2. Clear out of lock
+    [Y_REAR_DOCK - 0.8 * TRAVEL, Z_UPPER],    // 3. Main horizontal glide rail
+    [Y_REAR_DOCK - TRAVEL, Z_UPPER + RAMP_UP] // 4. Hard-stop extension lift
 ];
 
 front_track_pts = [
     [Y_FRONT_DOCK, Z_LOWER - 2.5],             // 1. Docked Detente Dip
-    [Y_FRONT_DOCK + 6.0, Z_LOWER],             // 2. Clear out of lock
-    [Y_FRONT_DOCK + 0.8 * TRAVEL, Z_LOWER],    // 3. Main horizontal glide rail
-    [Y_FRONT_DOCK + TRAVEL, Z_LOWER + RAMP_UP] // 4. Extended lift position
+    [Y_FRONT_DOCK - 6.0, Z_LOWER],             // 2. Clear out of lock
+    [Y_FRONT_DOCK - 0.8 * TRAVEL, Z_LOWER],    // 3. Main horizontal glide rail
+    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP] // 4. Extended lift position
 ];
 
 // Pivot notch path to facilitate the 5-degree hinge-down hand pressure action
 front_tilt_clearance_pts = [
-    [Y_FRONT_DOCK + TRAVEL, Z_LOWER + RAMP_UP - 3.5], // Low clearance ceiling
-    [Y_FRONT_DOCK + TRAVEL, Z_LOWER + RAMP_UP + 1.5]  // High pocket roof
+    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP - 3.5], // Low clearance ceiling
+    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP + 1.5]  // High pocket roof
 ];
 
 // ============================================================================
@@ -175,7 +206,7 @@ module trackpad_sled() {
         tag("remove") translate([TP_SWITCH_X, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
             cuboid([16.0, SLED_WALL*3, 8.02], anchor=CENTER);
         
-        // 5. Boss Mount Channels for Heat-Set Inserts Surrounding Screws (M3 Pull-Safe)
+        // 5. Through-bores for M3 guide pins (or screw shanks) on both side walls
         // Upper Rear Inserts
         tag("remove") xcopies(SLED_W) translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
             rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
@@ -184,7 +215,7 @@ module trackpad_sled() {
         tag("remove") xcopies(SLED_W) translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
             rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
     }
-    
+
     // 6. High-Efficiency Anti-Friction Rib Contacts (Reduces FDM surface friction by >80%)
     // Base contact wear-strips
     xcopies(SLED_W - 12.0, n=2) translate([0, 0, -SLED_H/2 - 0.25])
@@ -195,27 +226,51 @@ module trackpad_sled() {
         cuboid([0.5, 10.0, SLED_H - 4.0], anchor=CENTER);
 }
 
-// ============================================================================
-// VISUALIZATION & CONFIGURATION CONTROL
-// ============================================================================
+module non_printable_guide_pins() {
+    // Visual-only hardware: side guide pins that run in chassis slots.
+    color(PIN_COLOR)
+    xcopies(SLED_W - SLED_WALL) {
+        translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
+            rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
+        translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
+            rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
+    }
+}
 
-// Interactively control rendering mode via editor
-SHOW_ASSEMBLED = true; 
-EXTEND_TRAY = false;    // Simulates sliding deployment path mechanics
-RENDER_CHASSIS = true;  // Allows rendering chassis alone
-RENDER_TRAY = true;     // Allows rendering trackpad sled alone
-CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
+module chassis_colored() {
+    color(CHASSIS_COLOR)
+        lap_dock_chassis();
 
-// OpenSCAD animation controls ($t runs from 0.0 to 1.0)
-ANIMATE_TRAY = true;
-ANIM_EXTEND_PHASE = 0.70; // 0..70%: extend, 70..100%: tilt
-ANIM_TILT_DEG = 15.0;
+    // Subtle accent pass for interior tunnel and cavity faces.
+    color(CHASSIS_INNER_COLOR)
+    intersection() {
+        lap_dock_chassis();
+        translate([0, 0, -CHASSIS_H/2 + TUNNEL_H/2 - 0.01])
+            cuboid([TUNNEL_W + 0.2, CHASSIS_D + 40.2, TUNNEL_H + 0.24], anchor=CENTER);
+    }
+}
 
-// Cut-away clipping block settings
-CUTAWAY_KEEP_RIGHT_HALF = true;
-CUTAWAY_MARGIN = 20.0;
+module tray_colored() {
+    color(TRAY_COLOR)
+        trackpad_sled();
+
+    // Accent pass for inner tray frame surfaces around the trackpad pocket.
+    color(TRAY_INNER_COLOR)
+    intersection() {
+        trackpad_sled();
+        translate([0, 0, 1.0])
+            cuboid([TP_W + 2*TP_SLOP + 0.2, TP_D + 2*TP_SLOP + 0.2, SLED_H + 0.24], anchor=CENTER);
+    }
+}
 
 function clamp01(v) = min(1, max(0, v));
+function lerp(a, b, t) = a + (b - a) * t;
+function sample_track(pts, t) =
+    t <= 1/3
+        ? [lerp(pts[0][0], pts[1][0], t*3), lerp(pts[0][1], pts[1][1], t*3)]
+        : (t <= 2/3
+            ? [lerp(pts[1][0], pts[2][0], (t - 1/3)*3), lerp(pts[1][1], pts[2][1], (t - 1/3)*3)]
+            : [lerp(pts[2][0], pts[3][0], (t - 2/3)*3), lerp(pts[2][1], pts[3][1], (t - 2/3)*3)]);
 
 module placed_trackpad_sled() {
     extend_progress = ANIMATE_TRAY
@@ -226,25 +281,32 @@ module placed_trackpad_sled() {
         : 0;
     tilt_deg = ANIM_TILT_DEG * tilt_progress;
 
-    tray_y = Y_REAR_DOCK + PIN_DIST/2 - TRAVEL * extend_progress;
-    tray_z = Z_SLED_TRAVEL - 2.5 + RAMP_UP * extend_progress;
+    rear_pin_pos = sample_track(rear_track_pts, extend_progress);
+    tray_y = rear_pin_pos[0] + PIN_DIST/2;
+    tray_z = rear_pin_pos[1] - Z_REAR_PIN_REL;
 
     if (SHOW_ASSEMBLED) {
         // Stage 1: closed to fully extended. Stage 2: rotate tray down 15 degrees.
         translate([0, tray_y, tray_z])
-            rot([tilt_deg, 0, 0], cp=[0, SLED_D/2, 0])
-                trackpad_sled();
+            rot([tilt_deg, 0, 0], cp=[0, -PIN_DIST/2, Z_REAR_PIN_REL]) {
+                tray_colored();
+                if (SHOW_NON_PRINTABLE_PINS)
+                    non_printable_guide_pins();
+            }
     } else {
         // Spread modules out horizontally for explicit slicing preview examinations
         translate([CHASSIS_W/2 + SLED_W/2 + 20.0, tray_y - (Y_REAR_DOCK + PIN_DIST/2), -CHASSIS_H/2 + SLED_H/2 + RAMP_UP * extend_progress])
-            rot([tilt_deg, 0, 0], cp=[0, SLED_D/2, 0])
-                trackpad_sled();
+            rot([tilt_deg, 0, 0], cp=[0, -PIN_DIST/2, Z_REAR_PIN_REL]) {
+                tray_colored();
+                if (SHOW_NON_PRINTABLE_PINS)
+                    non_printable_guide_pins();
+            }
     }
 }
 
 module render_layout() {
     if (RENDER_CHASSIS)
-        lap_dock_chassis();
+        chassis_colored();
 
     if (RENDER_TRAY)
         placed_trackpad_sled();
