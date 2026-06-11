@@ -20,20 +20,22 @@ A collection of local BOSL2 documentation files is available in the `Resources/`
 
 ## 📋 Planning & Execution Protocol
 
-Before editing any OpenSCAD files (such as `trays.scad`):
+Before editing any OpenSCAD files (such as [main.scad](main.scad)):
 
 1. **Information Gathering**:
-   - Locate the modules/methods that need alteration in [trays.scad](trays.scad).
+   - Locate the modules/methods that need alteration in [main.scad](main.scad).
    - Identify which documents in `Resources/` are relevant to your task (e.g., fastener clearances -> [Resources/screws.scad.md](Resources/screws.scad.md)).
 2. **Formulate a Structured Plan**:
    - Write down your planned changes as a set of logical steps.
    - Reference the concepts and function signatures retrieved from the `Resources/` files to justify your design decisions.
-3. **Adhere to the Codebase Style**:
+3. **Adreach to Design Prompts**:
+   - For designing, detailing, and simulating the sliding chassis and tilting trackpad tray mechanism, load and execute the instructions contained in [.github/prompts/chassis-design.prompt.md](.github/prompts/chassis-design.prompt.md).
+4. **Adhere to the Codebase Style**:
    - Use clean, relative BOSL2 positioning (`align()`, `attach()`, `tag()`) rather than nested, hard-to-maintain native OpenSCAD translations (`translate()`, `difference()`).
-   - Use configuration variables defined in the header of [trays.scad](trays.scad) (like `$slop`, `$fn`, `WALL_THICKNESS`) for printer tolerances and dimensional bounds.
+   - Use configuration variables defined in the header of [main.scad](main.scad) (like `$slop`, `$fn`, `WALL_THICKNESS`) for printer tolerances and dimensional bounds.
 
 ---
 
 ## 🤖 Custom Gem / Agent Instructions
 
-For additional user-scoped rules, check the Custom Gem Instructions file at `.github/gemini-gem-instructions.md`. Keep those instructions in mind for all tasks in this repository.
+For additional user-scoped rules, check the Custom Gem Instructions file at [.github/gemini-gem-instructions.md](.github/gemini-gem-instructions.md). Keep those instructions in mind for all tasks in this repository.
