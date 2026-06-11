@@ -202,22 +202,49 @@ module trackpad_sled() {
 // Interactively control rendering mode via editor
 SHOW_ASSEMBLED = true; 
 EXTEND_TRAY = false;    // Simulates sliding deployment path mechanics
+RENDER_CHASSIS = true;  // Allows rendering chassis alone
+RENDER_TRAY = true;     // Allows rendering trackpad sled alone
+CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
 
-if (SHOW_ASSEMBLED) {
-    // Render complete system as structurally unified assembly
-    lap_dock_chassis();
-    
-    // Handle conditional placement based on simulated expansion state
-    if (EXTEND_TRAY) {
-        translate([0, Y_REAR_DOCK + TRAVEL + PIN_DIST/2, Z_SLED_TRAVEL + RAMP_UP])
-            trackpad_sled();
+// Cut-away clipping block settings
+CUTAWAY_KEEP_RIGHT_HALF = true;
+CUTAWAY_MARGIN = 20.0;
+
+module placed_trackpad_sled() {
+    if (SHOW_ASSEMBLED) {
+        // Handle conditional placement based on simulated expansion state
+        if (EXTEND_TRAY) {
+            translate([0, Y_REAR_DOCK + TRAVEL + PIN_DIST/2, Z_SLED_TRAVEL + RAMP_UP])
+                trackpad_sled();
+        } else {
+            // Docked inside gravity detente position
+            translate([0, Y_REAR_DOCK + PIN_DIST/2, Z_SLED_TRAVEL - 2.5])
+                trackpad_sled();
+        }
     } else {
-        // Docked inside gravity detente position
-        translate([0, Y_REAR_DOCK + PIN_DIST/2, Z_SLED_TRAVEL - 2.5])
+        // Spread modules out horizontally for explicit slicing preview examinations
+        translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, -CHASSIS_H/2 + SLED_H/2])
             trackpad_sled();
     }
+}
+
+module render_layout() {
+    if (RENDER_CHASSIS)
+        lap_dock_chassis();
+
+    if (RENDER_TRAY)
+        placed_trackpad_sled();
+}
+
+if (CUTAWAY_VIEW) {
+    // Intersect the render with a large half-space cuboid to inspect internals.
+    intersection() {
+        render_layout();
+
+        // Keep either right (+X) or left (-X) half of the current scene.
+        translate([(CUTAWAY_KEEP_RIGHT_HALF ? 1 : -1) * (CHASSIS_W/2 + CUTAWAY_MARGIN) / 2, 0, 0])
+            cuboid([CHASSIS_W + CUTAWAY_MARGIN, CHASSIS_D + 2*TRAVEL + 2*CUTAWAY_MARGIN, CHASSIS_H + SLED_H + 2*RAMP_UP + 2*CUTAWAY_MARGIN], anchor=CENTER);
+    }
 } else {
-    // Spread modules out horizontally for explicit slicing preview examinations
-    translate([0, 0, 0]) lap_dock_chassis();
-    translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, -CHASSIS_H/2 + SLED_H/2]) trackpad_sled();
+    render_layout();
 }
