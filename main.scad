@@ -82,6 +82,8 @@ TUNNEL_H = SLED_H + RAMP_UP + 2.0; // Clear height accommodating full ramp-up st
 CHASSIS_W = KB_W + 2 * WALL_THICKNESS + 4.0;
 CHASSIS_D = KB_D + 2 * WALL_THICKNESS + 4.0;
 CHASSIS_H = KB_H_BACK + SEP_THICKNESS + TUNNEL_H;
+TOP_FRAME_H = KB_H_BACK + SEP_THICKNESS; // Minimal keyboard-only chassis head
+TOP_FRAME_Z = CHASSIS_H/2 - TOP_FRAME_H/2;
 
 // ============================================================================
 // 🛠️ DYNAMIC COORD CALCULATIONS (Ensures perfect alignment of pins and rails)
@@ -149,46 +151,22 @@ module render_slot_chain(pts, slot_width, slot_depth) {
 }
 
 module lap_dock_chassis() {
-    // Single integrated master component optimized for face-down support-free printing
+    // Keyboard head frame: minimal-height shell sized only for the keyboard pocket.
+    translate([0, 0, TOP_FRAME_Z])
     diff()
-    cuboid([CHASSIS_W, CHASSIS_D, CHASSIS_H], rounding=LAP_ROUNDING, 
-           edges=[BOTTOM, LEFT+BOTTOM, RIGHT+BOTTOM, FRONT+BOTTOM, BACK+BOTTOM], anchor=CENTER) {
-        
+    cuboid([CHASSIS_W, CHASSIS_D, TOP_FRAME_H], anchor=CENTER) {
+
         // 1. Keyboard Nest (Subtracted down from top surface)
-        tag("remove") translate([0, 0, CHASSIS_H/2 - KB_H_BACK/2 + 0.01])
+        tag("remove") translate([0, 0, TOP_FRAME_H/2 - KB_H_BACK/2 + 0.01])
             cuboid([KB_W + FIT_SLOP, KB_D + FIT_SLOP, KB_H_BACK + 0.02], anchor=CENTER);
-        
-        // 2. Open-Bottom Hanger Cutout (Leaves a strict 6mm interior perimeter bezel)
-        tag("remove") translate([0, 0, -CHASSIS_H/2 + (CHASSIS_H - KB_H_BACK)/2])
-            cuboid([KB_W - 12.0, KB_D - 12.0, CHASSIS_H], anchor=CENTER);
-        
-        // 3. Trackpad Tunnel (Completely open bottom face, zero-support design)
-        tag("remove") translate([0, 0, -CHASSIS_H/2 + TUNNEL_H/2 - 0.01])
-            cuboid([TUNNEL_W, CHASSIS_D + 40.0, TUNNEL_H + 0.02], anchor=CENTER);
-        
-        // 4. Dual Cam Tracking Profiles on Lateral Inner Walls
-        // Left Wall Cutouts
-        tag("remove") translate([-TUNNEL_W/2, 0, 0]) {
-            render_slot_chain(rear_track_pts, SLOT_W, SLOT_DEPTH);
-            render_slot_chain(front_track_pts, SLOT_W, SLOT_DEPTH);
-            render_slot_chain(front_tilt_clearance_pts, SLOT_W, SLOT_DEPTH);
-        }
-        // Right Wall Cutouts
-        tag("remove") translate([TUNNEL_W/2, 0, 0]) {
-            render_slot_chain(rear_track_pts, SLOT_W, SLOT_DEPTH);
-            render_slot_chain(front_track_pts, SLOT_W, SLOT_DEPTH);
-            render_slot_chain(front_tilt_clearance_pts, SLOT_W, SLOT_DEPTH);
-        }
-        
-        // 5. Rear Coaligned Power Switch & Keyboard Charging Port Cutout
-        tag("remove") translate([KB_PORT_X, CHASSIS_D/2, CHASSIS_H/2 - KB_H_BACK/2])
+
+        // 2. Open-bottom hanger cutout leaves a perimeter support shelf for keyboard.
+        tag("remove") translate([0, 0, -TOP_FRAME_H/2 + (TOP_FRAME_H - KB_H_BACK)/2])
+            cuboid([KB_W - 12.0, KB_D - 12.0, TOP_FRAME_H + 0.02], anchor=CENTER);
+
+        // 3. Rear coaligned keyboard power/charging opening.
+        tag("remove") translate([KB_PORT_X, CHASSIS_D/2, TOP_FRAME_H/2 - KB_H_BACK/2])
             cuboid([KB_PORT_W_TOTAL, WALL_THICKNESS*3, 10.0], anchor=CENTER);
-            
-        // 6. Rear Pass-through Cutouts for Sled Ports when Docked
-        tag("remove") translate([0, CHASSIS_D/2, Z_UPPER - 2.5])
-            cuboid([TP_PORT_W + 4.0, WALL_THICKNESS*3, 8.0], anchor=CENTER);
-        tag("remove") translate([TP_SWITCH_X, CHASSIS_D/2, Z_UPPER - 2.5])
-            cuboid([20.0, WALL_THICKNESS*3, 8.0], anchor=CENTER);
     }
 
     // 7. Dedicated internal cam-track walls.
