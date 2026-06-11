@@ -168,12 +168,12 @@ module trackpad_sled() {
             cuboid([TP_W + 2*TP_SLOP - 8.0, TP_D + 2*TP_SLOP - 8.0, SLED_H + 2.0], anchor=CENTER);
         
         // 3. Central Sled USB-C Interface Charging Notch
-        tag("remove") translate([0, SLED_D/2, SLED_H/2 - 4.0])
-            cuboid([TP_PORT_W, SLED_WALL*3, 8.0], anchor=CENTER);
+        tag("remove") translate([0, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
+            cuboid([TP_PORT_W, SLED_WALL*3, 8.02], anchor=CENTER);
             
         // 4. Offset Sled Rear Toggle Switch Window
-        tag("remove") translate([TP_SWITCH_X, SLED_D/2, SLED_H/2 - 4.0])
-            cuboid([16.0, SLED_WALL*3, 8.0], anchor=CENTER);
+        tag("remove") translate([TP_SWITCH_X, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
+            cuboid([16.0, SLED_WALL*3, 8.02], anchor=CENTER);
         
         // 5. Boss Mount Channels for Heat-Set Inserts Surrounding Screws (M3 Pull-Safe)
         // Upper Rear Inserts
@@ -206,25 +206,39 @@ RENDER_CHASSIS = true;  // Allows rendering chassis alone
 RENDER_TRAY = true;     // Allows rendering trackpad sled alone
 CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
 
+// OpenSCAD animation controls ($t runs from 0.0 to 1.0)
+ANIMATE_TRAY = true;
+ANIM_EXTEND_PHASE = 0.70; // 0..70%: extend, 70..100%: tilt
+ANIM_TILT_DEG = 15.0;
+
 // Cut-away clipping block settings
 CUTAWAY_KEEP_RIGHT_HALF = true;
 CUTAWAY_MARGIN = 20.0;
 
+function clamp01(v) = min(1, max(0, v));
+
 module placed_trackpad_sled() {
+    extend_progress = ANIMATE_TRAY
+        ? clamp01($t / ANIM_EXTEND_PHASE)
+        : (EXTEND_TRAY ? 1 : 0);
+    tilt_progress = ANIMATE_TRAY
+        ? clamp01(($t - ANIM_EXTEND_PHASE) / (1 - ANIM_EXTEND_PHASE))
+        : 0;
+    tilt_deg = ANIM_TILT_DEG * tilt_progress;
+
+    tray_y = Y_REAR_DOCK + PIN_DIST/2 - TRAVEL * extend_progress;
+    tray_z = Z_SLED_TRAVEL - 2.5 + RAMP_UP * extend_progress;
+
     if (SHOW_ASSEMBLED) {
-        // Handle conditional placement based on simulated expansion state
-        if (EXTEND_TRAY) {
-            translate([0, Y_REAR_DOCK + TRAVEL + PIN_DIST/2, Z_SLED_TRAVEL + RAMP_UP])
+        // Stage 1: closed to fully extended. Stage 2: rotate tray down 15 degrees.
+        translate([0, tray_y, tray_z])
+            rot([tilt_deg, 0, 0], cp=[0, SLED_D/2, 0])
                 trackpad_sled();
-        } else {
-            // Docked inside gravity detente position
-            translate([0, Y_REAR_DOCK + PIN_DIST/2, Z_SLED_TRAVEL - 2.5])
-                trackpad_sled();
-        }
     } else {
         // Spread modules out horizontally for explicit slicing preview examinations
-        translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, -CHASSIS_H/2 + SLED_H/2])
-            trackpad_sled();
+        translate([CHASSIS_W/2 + SLED_W/2 + 20.0, tray_y - (Y_REAR_DOCK + PIN_DIST/2), -CHASSIS_H/2 + SLED_H/2 + RAMP_UP * extend_progress])
+            rot([tilt_deg, 0, 0], cp=[0, SLED_D/2, 0])
+                trackpad_sled();
     }
 }
 
