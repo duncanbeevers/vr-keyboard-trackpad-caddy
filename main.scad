@@ -100,6 +100,13 @@ SLOT_W = PIN_DIAM + SLIDE_SLOP;
 SLOT_DEPTH = WALL_THICKNESS * 3; 
 PIN_PROTRUSION = 1.0; // Side protrusion of printed guide pins beyond sled outer wall
 
+// Dedicated internal track-wall sizing (kept below keyboard ledge)
+TRACK_WALL_W = WALL_THICKNESS;
+TRACK_WALL_D = CHASSIS_D - 2*WALL_THICKNESS;
+// Place wall centerlines just outside the tunnel envelope so tray sidewalls keep clearance.
+TRACK_WALL_SPAN_X = TUNNEL_W + TRACK_WALL_W;
+TRACK_WALL_Z = -CHASSIS_H/2 + TUNNEL_H/2 - 0.01;
+
 // Track Longitudinal Baselines
 Y_REAR_DOCK = -CHASSIS_D/2 + 20.0;
 Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
@@ -183,6 +190,17 @@ module lap_dock_chassis() {
         tag("remove") translate([TP_SWITCH_X, CHASSIS_D/2, Z_UPPER - 2.5])
             cuboid([20.0, WALL_THICKNESS*3, 8.0], anchor=CENTER);
     }
+
+    // 7. Dedicated internal cam-track walls.
+    // Positioned in the tunnel zone so they do not rise into the keyboard shelf volume.
+    xcopies(TRACK_WALL_SPAN_X)
+    translate([0, 0, TRACK_WALL_Z])
+    diff()
+    cuboid([TRACK_WALL_W, TRACK_WALL_D, TUNNEL_H], anchor=CENTER) {
+        tag("remove") render_slot_chain(z_shifted_track(rear_track_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
+        tag("remove") render_slot_chain(z_shifted_track(front_track_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
+        tag("remove") render_slot_chain(z_shifted_track(front_tilt_clearance_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
+    }
 }
 
 module trackpad_sled() {
@@ -229,7 +247,7 @@ module trackpad_sled() {
 module non_printable_guide_pins() {
     // Visual-only hardware: side guide pins that run in chassis slots.
     color(PIN_COLOR)
-    xcopies(SLED_W - SLED_WALL) {
+    xcopies(SLED_W) {
         translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
             rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
         translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
@@ -265,6 +283,7 @@ module tray_colored() {
 
 function clamp01(v) = min(1, max(0, v));
 function lerp(a, b, t) = a + (b - a) * t;
+function z_shifted_track(pts, dz) = [for (p = pts) [p[0], p[1] + dz]];
 function sample_track(pts, t) =
     t <= 1/3
         ? [lerp(pts[0][0], pts[1][0], t*3), lerp(pts[0][1], pts[1][1], t*3)]
