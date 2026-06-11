@@ -62,6 +62,7 @@ PIN_DIAM = 3.0;          // M3 guide pin shank size
 PIN_DIST = 60.0;         // Linear distance between front and rear cam pins (D_pins)
 TRAVEL = 115.0;          // Total slide-out extension distance
 RAMP_UP = 4.5;           // Vertical translation lift at full extension
+EXTEND_LIFT = RAMP_UP + 3.0; // Extra pop-up at full extension for flush rear-edge alignment
 
 // Parameterized Slicing & Friction Tolerances
 FIT_SLOP = 0.15;         // Tight slop for static assembly press-fits
@@ -115,25 +116,38 @@ Y_CLOSED_TRAY_CENTER = -CHASSIS_D/2 + SLED_D/2 + FRONT_CLOSED_CLEARANCE;
 Y_REAR_DOCK = Y_CLOSED_TRAY_CENTER - PIN_DIST/2;
 Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
 
+// Front retention geometry: ramp-up and end detent pocket.
+FRONT_RAMP_START_FRAC = 0.82; // Fraction of travel where lift ramp begins
+FRONT_DETENT_LEN = 6.0;       // Longitudinal length of front detent pocket
+FRONT_DETENT_DROP = 1.2;      // Vertical drop at detent floor vs ramp crest
+
+// Clamp cam geometry to physical track-wall depth so ramp/detent stay inside rails.
+TRACK_END_MARGIN = 4.0;
+TRACK_FRONT_LIMIT = -TRACK_WALL_D/2 + TRACK_END_MARGIN;
+MAX_TRACK_TRAVEL = max(0, Y_FRONT_DOCK - TRACK_FRONT_LIMIT);
+EFFECTIVE_TRAVEL = min(TRAVEL, MAX_TRACK_TRAVEL);
+
 // Definition of Cam Track Coordinates (Y, Z)
 rear_track_pts = [
-    [Y_REAR_DOCK, Z_UPPER - 2.5],             // 1. Docked Detente Dip
-    [Y_REAR_DOCK - 6.0, Z_UPPER],             // 2. Clear out of lock
-    [Y_REAR_DOCK - 0.8 * TRAVEL, Z_UPPER],    // 3. Main horizontal glide rail
-    [Y_REAR_DOCK - TRAVEL, Z_UPPER + RAMP_UP] // 4. Hard-stop extension lift
+    [Y_REAR_DOCK, Z_UPPER - 2.5],                                  // 1. Docked detente dip
+    [Y_REAR_DOCK - 6.0, Z_UPPER],                                  // 2. Clear out of lock
+    [Y_REAR_DOCK - FRONT_RAMP_START_FRAC * EFFECTIVE_TRAVEL, Z_UPPER],       // 3. Main horizontal glide rail
+    [Y_REAR_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_LEN, Z_UPPER + EXTEND_LIFT], // 4. Front ramp crest
+    [Y_REAR_DOCK - EFFECTIVE_TRAVEL, Z_UPPER + EXTEND_LIFT - FRONT_DETENT_DROP] // 5. Front retention detent
 ];
 
 front_track_pts = [
-    [Y_FRONT_DOCK, Z_LOWER - 2.5],             // 1. Docked Detente Dip
-    [Y_FRONT_DOCK - 6.0, Z_LOWER],             // 2. Clear out of lock
-    [Y_FRONT_DOCK - 0.8 * TRAVEL, Z_LOWER],    // 3. Main horizontal glide rail
-    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP] // 4. Extended lift position
+    [Y_FRONT_DOCK, Z_LOWER - 2.5],                                  // 1. Docked detente dip
+    [Y_FRONT_DOCK - 6.0, Z_LOWER],                                  // 2. Clear out of lock
+    [Y_FRONT_DOCK - FRONT_RAMP_START_FRAC * EFFECTIVE_TRAVEL, Z_LOWER],       // 3. Main horizontal glide rail
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_LEN, Z_LOWER + EXTEND_LIFT], // 4. Front ramp crest
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP] // 5. Front retention detent
 ];
 
 // Pivot notch path to facilitate the 5-degree hinge-down hand pressure action
 front_tilt_clearance_pts = [
-    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP - 3.5], // Low clearance ceiling
-    [Y_FRONT_DOCK - TRAVEL, Z_LOWER + RAMP_UP + 1.5]  // High pocket roof
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP - 3.5], // Low clearance ceiling
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP + 1.5]  // High pocket roof
 ];
 
 // ============================================================================
@@ -265,11 +279,16 @@ function clamp01(v) = min(1, max(0, v));
 function lerp(a, b, t) = a + (b - a) * t;
 function z_shifted_track(pts, dz) = [for (p = pts) [p[0], p[1] + dz]];
 function sample_track(pts, t) =
-    t <= 1/3
-        ? [lerp(pts[0][0], pts[1][0], t*3), lerp(pts[0][1], pts[1][1], t*3)]
-        : (t <= 2/3
-            ? [lerp(pts[1][0], pts[2][0], (t - 1/3)*3), lerp(pts[1][1], pts[2][1], (t - 1/3)*3)]
-            : [lerp(pts[2][0], pts[3][0], (t - 2/3)*3), lerp(pts[2][1], pts[3][1], (t - 2/3)*3)]);
+    let(
+        segs = len(pts) - 1,
+        st = clamp01(t) * segs,
+        i = min(segs - 1, floor(st)),
+        f = st - i
+    )
+    [
+        lerp(pts[i][0], pts[i + 1][0], f),
+        lerp(pts[i][1], pts[i + 1][1], f)
+    ];
 
 module placed_trackpad_sled() {
     extend_progress = ANIMATE_TRAY
@@ -281,25 +300,45 @@ module placed_trackpad_sled() {
     tilt_deg = ANIM_TILT_DEG * tilt_progress;
 
     rear_pin_pos = sample_track(rear_track_pts, extend_progress);
-    tray_y = rear_pin_pos[0] + PIN_DIST/2;
-    tray_z = rear_pin_pos[1] - Z_REAR_PIN_REL;
+    front_pin_pos = sample_track(front_track_pts, extend_progress);
+
+    // Solve a base rigid transform so BOTH pin centers land on their cam tracks.
+    local_rear_y = -PIN_DIST/2;
+    local_rear_z = Z_REAR_PIN_REL;
+    local_front_y = PIN_DIST/2;
+    local_front_z = Z_FRONT_PIN_REL;
+
+    local_dy = local_front_y - local_rear_y;
+    local_dz = local_front_z - local_rear_z;
+    world_dy = front_pin_pos[0] - rear_pin_pos[0];
+    world_dz = front_pin_pos[1] - rear_pin_pos[1];
+
+    base_pitch_deg = atan2(world_dz, world_dy) - atan2(local_dz, local_dy);
+    c = cos(base_pitch_deg);
+    s = sin(base_pitch_deg);
+
+    base_ty = rear_pin_pos[0] - (local_rear_y*c - local_rear_z*s);
+    base_tz = rear_pin_pos[1] - (local_rear_y*s + local_rear_z*c);
 
     if (SHOW_ASSEMBLED) {
-        // Stage 1: closed to fully extended. Stage 2: rotate tray down 15 degrees.
-        translate([0, tray_y, tray_z])
-            rot([tilt_deg, 0, 0], cp=[0, -PIN_DIST/2, Z_REAR_PIN_REL]) {
-                tray_colored();
-                if (SHOW_NON_PRINTABLE_PINS)
-                    non_printable_guide_pins();
-            }
+        // Stage 1: both pins follow cam tracks. Stage 2: tilt around the rear pin anchor (+Y pin).
+        rot([tilt_deg, 0, 0], cp=[0, front_pin_pos[0], front_pin_pos[1]])
+            translate([0, base_ty, base_tz])
+                rot([base_pitch_deg, 0, 0]) {
+                    tray_colored();
+                    if (SHOW_NON_PRINTABLE_PINS)
+                        non_printable_guide_pins();
+                }
     } else {
         // Spread modules out horizontally for explicit slicing preview examinations
-        translate([CHASSIS_W/2 + SLED_W/2 + 20.0, tray_y - (Y_REAR_DOCK + PIN_DIST/2), -CHASSIS_H/2 + SLED_H/2 + RAMP_UP * extend_progress])
-            rot([tilt_deg, 0, 0], cp=[0, -PIN_DIST/2, Z_REAR_PIN_REL]) {
-                tray_colored();
-                if (SHOW_NON_PRINTABLE_PINS)
-                    non_printable_guide_pins();
-            }
+        translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, 0])
+            rot([tilt_deg, 0, 0], cp=[0, base_ty + local_front_y, base_tz + local_front_z])
+                translate([0, base_ty, base_tz])
+                    rot([base_pitch_deg, 0, 0]) {
+                        tray_colored();
+                        if (SHOW_NON_PRINTABLE_PINS)
+                            non_printable_guide_pins();
+                    }
     }
 }
 
