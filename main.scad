@@ -14,7 +14,6 @@ PIN_COLOR = "gold";
 // Visual finish palette
 CHASSIS_COLOR = "lightgray";
 CHASSIS_INNER_COLOR = "gainsboro";
-TRAY_COLOR = "dimgray";
 TRAY_INNER_COLOR = "slategray";
 
 // Interactively control rendering mode via editor
@@ -26,7 +25,9 @@ CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
 
 // OpenSCAD animation controls ($t runs from 0.0 to 1.0)
 ANIMATE_TRAY = true;
-ANIM_EXTEND_PHASE = 0.70; // 0..70%: extend, 70..100%: tilt
+ANIM_EXTEND_PHASE = 0.62; // 0..62%: slide to ramp crest
+ANIM_DROP_PHASE = 0.14;   // 62..76%: drop from crest into detent pocket
+ANIM_DETENT_SETTLE_PHASE = 0.06; // Hold in detent before tilt starts
 ANIM_TILT_DEG = 15.0;
 
 // Cut-away clipping block settings
@@ -118,8 +119,11 @@ Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
 
 // Front retention geometry: ramp-up and end detent pocket.
 FRONT_RAMP_START_FRAC = 0.82; // Fraction of travel where lift ramp begins
-FRONT_DETENT_LEN = 6.0;       // Longitudinal length of front detent pocket
-FRONT_DETENT_DROP = 1.2;      // Vertical drop at detent floor vs ramp crest
+FRONT_DETENT_LEN = 7.0;       // Longitudinal distance from crest start to track end
+FRONT_DETENT_FLOOR_LEN = 3.0; // Flat seated floor length at very end
+FRONT_DETENT_DROP = 1.8;      // Vertical drop at detent floor vs ramp crest
+FRONT_HINGE_POCKET_DROP = 3.5;
+FRONT_HINGE_POCKET_RISE = 1.5;
 
 // Clamp cam geometry to physical track-wall depth so ramp/detent stay inside rails.
 TRACK_END_MARGIN = 4.0;
@@ -133,7 +137,8 @@ rear_track_pts = [
     [Y_REAR_DOCK - 6.0, Z_UPPER],                                  // 2. Clear out of lock
     [Y_REAR_DOCK - FRONT_RAMP_START_FRAC * EFFECTIVE_TRAVEL, Z_UPPER],       // 3. Main horizontal glide rail
     [Y_REAR_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_LEN, Z_UPPER + EXTEND_LIFT], // 4. Front ramp crest
-    [Y_REAR_DOCK - EFFECTIVE_TRAVEL, Z_UPPER + EXTEND_LIFT - FRONT_DETENT_DROP] // 5. Front retention detent
+    [Y_REAR_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_FLOOR_LEN, Z_UPPER + EXTEND_LIFT - FRONT_DETENT_DROP], // 5. Drop into detent
+    [Y_REAR_DOCK - EFFECTIVE_TRAVEL, Z_UPPER + EXTEND_LIFT - FRONT_DETENT_DROP] // 6. Flat detent floor
 ];
 
 front_track_pts = [
@@ -141,13 +146,18 @@ front_track_pts = [
     [Y_FRONT_DOCK - 6.0, Z_LOWER],                                  // 2. Clear out of lock
     [Y_FRONT_DOCK - FRONT_RAMP_START_FRAC * EFFECTIVE_TRAVEL, Z_LOWER],       // 3. Main horizontal glide rail
     [Y_FRONT_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_LEN, Z_LOWER + EXTEND_LIFT], // 4. Front ramp crest
-    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP] // 5. Front retention detent
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_FLOOR_LEN, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP], // 5. Drop into detent
+    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP] // 6. Flat detent floor
 ];
+
+FRONT_HINGE_POCKET_Y = Y_FRONT_DOCK - EFFECTIVE_TRAVEL + FRONT_DETENT_LEN;
+FRONT_HINGE_POCKET_BOTTOM_Z = Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP - FRONT_HINGE_POCKET_DROP;
+FRONT_HINGE_POCKET_TOP_Z = Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP + FRONT_HINGE_POCKET_RISE;
 
 // Pivot notch path to facilitate the 5-degree hinge-down hand pressure action
 front_tilt_clearance_pts = [
-    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP - 3.5], // Low clearance ceiling
-    [Y_FRONT_DOCK - EFFECTIVE_TRAVEL, Z_LOWER + EXTEND_LIFT - FRONT_DETENT_DROP + 1.5]  // High pocket roof
+    [FRONT_HINGE_POCKET_Y, FRONT_HINGE_POCKET_BOTTOM_Z], // Bottom of hinge pocket directly below crest
+    [FRONT_HINGE_POCKET_Y, FRONT_HINGE_POCKET_TOP_Z]     // Pocket roof / tilt clearance
 ];
 
 // ============================================================================
@@ -263,8 +273,7 @@ module chassis_colored() {
 }
 
 module tray_colored() {
-    color(TRAY_COLOR)
-        trackpad_sled();
+    trackpad_sled();
 
     // Accent pass for inner tray frame surfaces around the trackpad pocket.
     color(TRAY_INNER_COLOR)
@@ -291,16 +300,36 @@ function sample_track(pts, t) =
     ];
 
 module placed_trackpad_sled() {
-    extend_progress = ANIMATE_TRAY
-        ? clamp01($t / ANIM_EXTEND_PHASE)
-        : (EXTEND_TRAY ? 1 : 0);
+    // Track progression is split into: slide-to-crest, detent drop, then hold.
+    segs = len(rear_track_pts) - 1;
+    crest_u = (len(rear_track_pts) - 3) / segs; // Crest index is point 3 for 6-point track.
+    drop_end_phase = min(0.99, ANIM_EXTEND_PHASE + ANIM_DROP_PHASE);
+
+    rear_crest_pos = rear_track_pts[len(rear_track_pts) - 3];
+    front_crest_pos = front_track_pts[len(front_track_pts) - 3];
+    rear_detent_pos = rear_track_pts[len(rear_track_pts) - 1];
+    front_detent_pos = front_track_pts[len(front_track_pts) - 1];
+
+    slide_progress = !ANIMATE_TRAY
+        ? (EXTEND_TRAY ? 1 : 0)
+        : ($t <= ANIM_EXTEND_PHASE
+            ? clamp01(($t / max(0.0001, ANIM_EXTEND_PHASE)) * crest_u)
+            : crest_u);
+
+    drop_progress = !ANIMATE_TRAY
+        ? (EXTEND_TRAY ? 1 : 0)
+        : ($t <= ANIM_EXTEND_PHASE
+            ? 0
+            : clamp01(($t - ANIM_EXTEND_PHASE) / max(0.0001, ANIM_DROP_PHASE)));
+
+    tilt_start_phase = min(0.995, drop_end_phase + ANIM_DETENT_SETTLE_PHASE);
     tilt_progress = ANIMATE_TRAY
-        ? clamp01(($t - ANIM_EXTEND_PHASE) / (1 - ANIM_EXTEND_PHASE))
+        ? clamp01(($t - tilt_start_phase) / (1 - tilt_start_phase))
         : 0;
     tilt_deg = ANIM_TILT_DEG * tilt_progress;
 
-    rear_pin_pos = sample_track(rear_track_pts, extend_progress);
-    front_pin_pos = sample_track(front_track_pts, extend_progress);
+    rear_slide_pos = sample_track(rear_track_pts, slide_progress);
+    front_slide_pos = sample_track(front_track_pts, slide_progress);
 
     // Solve a base rigid transform so BOTH pin centers land on their cam tracks.
     local_rear_y = -PIN_DIST/2;
@@ -308,21 +337,51 @@ module placed_trackpad_sled() {
     local_front_y = PIN_DIST/2;
     local_front_z = Z_FRONT_PIN_REL;
 
+    crest_world_dy = front_crest_pos[0] - rear_crest_pos[0];
+    crest_world_dz = front_crest_pos[1] - rear_crest_pos[1];
     local_dy = local_front_y - local_rear_y;
     local_dz = local_front_z - local_rear_z;
-    world_dy = front_pin_pos[0] - rear_pin_pos[0];
-    world_dz = front_pin_pos[1] - rear_pin_pos[1];
 
-    base_pitch_deg = atan2(world_dz, world_dy) - atan2(local_dz, local_dy);
-    c = cos(base_pitch_deg);
-    s = sin(base_pitch_deg);
+    crest_pitch_deg = atan2(crest_world_dz, crest_world_dy) - atan2(local_dz, local_dy);
+    crest_c = cos(crest_pitch_deg);
+    crest_s = sin(crest_pitch_deg);
+    crest_ty = rear_crest_pos[0] - (local_rear_y*crest_c - local_rear_z*crest_s);
+    crest_tz = rear_crest_pos[1] - (local_rear_y*crest_s + local_rear_z*crest_c);
 
-    base_ty = rear_pin_pos[0] - (local_rear_y*c - local_rear_z*s);
-    base_tz = rear_pin_pos[1] - (local_rear_y*s + local_rear_z*c);
+    pivot_local_y = local_front_y;
+    pivot_local_z = local_front_z;
+    pivot_crest_world_y = FRONT_HINGE_POCKET_Y;
+    pivot_crest_world_z = front_crest_pos[1];
+    pivot_seated_world_z = FRONT_HINGE_POCKET_BOTTOM_Z;
+    vertical_drop_dz = pivot_seated_world_z - pivot_crest_world_z;
+
+    in_vertical_drop_or_hold = (!ANIMATE_TRAY && EXTEND_TRAY) || (ANIMATE_TRAY && $t > ANIM_EXTEND_PHASE);
+
+    slide_world_dy = front_slide_pos[0] - rear_slide_pos[0];
+    slide_world_dz = front_slide_pos[1] - rear_slide_pos[1];
+    slide_pitch_deg = atan2(slide_world_dz, slide_world_dy) - atan2(local_dz, local_dy);
+    slide_c = cos(slide_pitch_deg);
+    slide_s = sin(slide_pitch_deg);
+    slide_ty = rear_slide_pos[0] - (local_rear_y*slide_c - local_rear_z*slide_s);
+    slide_tz = rear_slide_pos[1] - (local_rear_y*slide_s + local_rear_z*slide_c);
+
+    slide_pivot_is_front_track = front_slide_pos[0] > rear_slide_pos[0];
+    slide_pivot_world_y = slide_pivot_is_front_track ? front_slide_pos[0] : rear_slide_pos[0];
+    slide_pivot_world_z = slide_pivot_is_front_track ? front_slide_pos[1] : rear_slide_pos[1];
+    slide_pivot_local_y = slide_pivot_is_front_track ? local_front_y : local_rear_y;
+    slide_pivot_local_z = slide_pivot_is_front_track ? local_front_z : local_rear_z;
+
+    base_pitch_deg = in_vertical_drop_or_hold ? crest_pitch_deg : slide_pitch_deg;
+    base_ty = in_vertical_drop_or_hold ? crest_ty : slide_ty;
+    base_tz = in_vertical_drop_or_hold ? crest_tz + vertical_drop_dz * drop_progress : slide_tz;
+    pivot_world_y = in_vertical_drop_or_hold ? pivot_crest_world_y : slide_pivot_world_y;
+    pivot_world_z = in_vertical_drop_or_hold ? lerp(pivot_crest_world_z, pivot_seated_world_z, drop_progress) : slide_pivot_world_z;
+    pivot_local_y = in_vertical_drop_or_hold ? local_front_y : slide_pivot_local_y;
+    pivot_local_z = in_vertical_drop_or_hold ? local_front_z : slide_pivot_local_z;
 
     if (SHOW_ASSEMBLED) {
-        // Stage 1: both pins follow cam tracks. Stage 2: tilt around the rear pin anchor (+Y pin).
-        rot([tilt_deg, 0, 0], cp=[0, front_pin_pos[0], front_pin_pos[1]])
+        // Stage 1: both pins follow cam tracks. Stage 2: tilt around the detent-seated rear pin.
+        rot([tilt_deg, 0, 0], cp=[0, pivot_world_y, pivot_world_z])
             translate([0, base_ty, base_tz])
                 rot([base_pitch_deg, 0, 0]) {
                     tray_colored();
@@ -332,7 +391,7 @@ module placed_trackpad_sled() {
     } else {
         // Spread modules out horizontally for explicit slicing preview examinations
         translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, 0])
-            rot([tilt_deg, 0, 0], cp=[0, base_ty + local_front_y, base_tz + local_front_z])
+            rot([tilt_deg, 0, 0], cp=[0, base_ty + pivot_local_y, base_tz + pivot_local_z])
                 translate([0, base_ty, base_tz])
                     rot([base_pitch_deg, 0, 0]) {
                         tray_colored();
