@@ -76,6 +76,7 @@ SLED_WALL = 4.0;
 SLED_W = TP_W + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_D = TP_D + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_H = TP_H_BACK + 2.0;
+SLED_REAR_EXTENSION = 14.0; // Extra rear wall extension to keep the hinge pin captured while the tray extends farther
 
 // Derived Internal Channel/Tunnel Constraints
 TUNNEL_W = SLED_W + 2 * SLIDE_SLOP;
@@ -210,33 +211,40 @@ module lap_dock_chassis() {
 
 module trackpad_sled() {
     // Open-frame lightweight sliding suspension platform
-    diff()
-    cuboid([SLED_W, SLED_D, SLED_H], rounding=2.0, edges="Z", anchor=CENTER) { // Fixed raw string selector here
-        
-        // 1. Snug Recess For Trackpad Outer Shell
-        tag("remove") translate([0, 0, 1.0])
-            cuboid([TP_W + 2*TP_SLOP, TP_D + 2*TP_SLOP, SLED_H], anchor=CENTER);
-        
-        // 2. Open-Frame Structural Underwindow (Facilitates easy finger ejection from below)
-        tag("remove") translate([0, 0, -1.0])
-            cuboid([TP_W + 2*TP_SLOP - 8.0, TP_D + 2*TP_SLOP - 8.0, SLED_H + 2.0], anchor=CENTER);
-        
-        // 3. Central Sled USB-C Interface Charging Notch
-        tag("remove") translate([0, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
-            cuboid([TP_PORT_W, SLED_WALL*3, 8.02], anchor=CENTER);
+    union() {
+        diff()
+        cuboid([SLED_W, SLED_D, SLED_H], anchor=CENTER) { // Fixed raw string selector here
             
-        // 4. Offset Sled Rear Toggle Switch Window
-        tag("remove") translate([TP_SWITCH_X, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
-            cuboid([16.0, SLED_WALL*3, 8.02], anchor=CENTER);
-        
-        // 5. Through-bores for M3 guide pins (or screw shanks) on both side walls
-        // Upper Rear Inserts
-        tag("remove") xcopies(SLED_W) translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
-            rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
+            // 1. Snug Recess For Trackpad Outer Shell
+            tag("remove") translate([0, 0, 1.0])
+                cuboid([TP_W + 2*TP_SLOP, TP_D + 2*TP_SLOP, SLED_H], anchor=CENTER);
             
-        // Lower Front Inserts
-        tag("remove") xcopies(SLED_W) translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
-            rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
+            // 2. Open-Frame Structural Underwindow (Facilitates easy finger ejection from below)
+            tag("remove") translate([0, 0, -1.0])
+                cuboid([TP_W + 2*TP_SLOP - 8.0, TP_D + 2*TP_SLOP - 8.0, SLED_H + 2.0], anchor=CENTER);
+            
+            // 3. Central Sled USB-C Interface Charging Notch
+            tag("remove") translate([0, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
+                cuboid([TP_PORT_W, SLED_WALL*3, 8.02], anchor=CENTER);
+                
+            // 4. Offset Sled Rear Toggle Switch Window
+            tag("remove") translate([TP_SWITCH_X, SLED_D/2, SLED_H/2 - 4.0 + 0.01])
+                cuboid([16.0, SLED_WALL*3, 8.02], anchor=CENTER);
+            
+            // 5. Through-bores for M3 guide pins (or screw shanks) on both side walls
+            // Upper Rear Inserts
+            tag("remove") xcopies(SLED_W) translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
+                rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
+                
+            // Lower Front Inserts
+            tag("remove") xcopies(SLED_W) translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
+                rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
+        }
+
+        // Rear wall extensions on the back face (+Y) that give the hinge pins more trailing support
+        // without blocking the center rear cutouts for power and USB access.
+        xcopies(SLED_W - SLED_WALL) translate([0, SLED_D/2 + SLED_REAR_EXTENSION/2, 0])
+            cuboid([SLED_WALL, SLED_REAR_EXTENSION, SLED_H], anchor=CENTER);
     }
 
     // 6. High-Efficiency Anti-Friction Rib Contacts (Reduces FDM surface friction by >80%)
