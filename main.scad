@@ -64,6 +64,7 @@ PIN_DIST = 60.0;         // Linear distance between front and rear cam pins (D_p
 TRAVEL = 115.0;          // Total slide-out extension distance
 RAMP_UP = 4.5;           // Vertical translation lift at full extension
 EXTEND_LIFT = RAMP_UP + 3.0; // Extra pop-up at full extension for flush rear-edge alignment
+CAM_TRACK_DROP = 3.0;    // Lowers the entire sled/cam-track path to keep tray clear of chassis
 
 // Parameterized Slicing & Friction Tolerances
 FIT_SLOP = 0.15;         // Tight slop for static assembly press-fits
@@ -92,7 +93,7 @@ TOP_FRAME_Z = CHASSIS_H/2 - TOP_FRAME_H/2;
 // ============================================================================
 
 // Sled Z-axis positions relative to Chassis Center
-Z_SLED_TRAVEL = -CHASSIS_H/2 + SLED_H/2 + 2.5 + SLIDE_SLOP;
+Z_SLED_TRAVEL = -CHASSIS_H/2 + SLED_H/2 + 2.5 + SLIDE_SLOP - CAM_TRACK_DROP;
 Z_REAR_PIN_REL = SLED_H / 4;
 Z_FRONT_PIN_REL = -SLED_H / 4;
 
