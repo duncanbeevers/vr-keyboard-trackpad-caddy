@@ -77,6 +77,8 @@ SLED_W = TP_W + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_D = TP_D + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_H = TP_H_BACK + 2.0;
 SLED_REAR_EXTENSION = 14.0; // Extra rear wall extension to keep the hinge pin captured while the tray extends farther
+SLED_REAR_PIN_Y = SLED_D/2 + SLED_REAR_EXTENSION*0.5; // Rear pin sits in the rear extension tabs
+SLED_FRONT_PIN_Y = SLED_REAR_PIN_Y - PIN_DIST;        // Keep the front pin back in the tray body while preserving spacing
 
 // Derived Internal Channel/Tunnel Constraints
 TUNNEL_W = SLED_W + 2 * SLIDE_SLOP;
@@ -95,8 +97,8 @@ TOP_FRAME_Z = CHASSIS_H/2 - TOP_FRAME_H/2;
 
 // Sled Z-axis positions relative to Chassis Center
 Z_SLED_TRAVEL = -CHASSIS_H/2 + SLED_H/2 + 2.5 + SLIDE_SLOP - CAM_TRACK_DROP;
-Z_REAR_PIN_REL = SLED_H / 4;
-Z_FRONT_PIN_REL = -SLED_H / 4;
+Z_REAR_PIN_REL = -SLED_H / 4;
+Z_FRONT_PIN_REL = SLED_H / 4;
 
 Z_UPPER = Z_SLED_TRAVEL + Z_REAR_PIN_REL; // Upper track centerline baseline
 Z_LOWER = Z_SLED_TRAVEL + Z_FRONT_PIN_REL; // Lower track centerline baseline
@@ -114,7 +116,7 @@ TRACK_WALL_SPAN_X = TUNNEL_W + TRACK_WALL_W;
 TRACK_WALL_Z = -CHASSIS_H/2 + TUNNEL_H/2 - 0.01;
 
 // Track Longitudinal Baselines
-FRONT_CLOSED_CLEARANCE = 1.0; // Keep sled front just inside chassis front when docked
+FRONT_CLOSED_CLEARANCE = 0.0; // Keep sled front flush with the keyboard tray chassis front when docked
 Y_CLOSED_TRAY_CENTER = -CHASSIS_D/2 + SLED_D/2 + FRONT_CLOSED_CLEARANCE;
 Y_REAR_DOCK = Y_CLOSED_TRAY_CENTER - PIN_DIST/2;
 Y_FRONT_DOCK = Y_REAR_DOCK + PIN_DIST;
@@ -203,9 +205,6 @@ module lap_dock_chassis() {
     translate([0, 0, TRACK_WALL_Z])
     diff()
     cuboid([TRACK_WALL_W, TRACK_WALL_D, TUNNEL_H], anchor=CENTER) {
-        tag("remove") render_slot_chain(z_shifted_track(rear_track_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
-        tag("remove") render_slot_chain(z_shifted_track(front_track_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
-        tag("remove") render_slot_chain(z_shifted_track(front_tilt_clearance_pts, -TRACK_WALL_Z), SLOT_W, SLOT_DEPTH);
     }
 }
 
@@ -233,18 +232,18 @@ module trackpad_sled() {
             
             // 5. Through-bores for M3 guide pins (or screw shanks) on both side walls
             // Upper Rear Inserts
-            tag("remove") xcopies(SLED_W) translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
+            tag("remove") xcopies(SLED_W) translate([0, SLED_REAR_PIN_Y, Z_REAR_PIN_REL])
                 rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
                 
             // Lower Front Inserts
-            tag("remove") xcopies(SLED_W) translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
+            tag("remove") xcopies(SLED_W) translate([0, SLED_FRONT_PIN_Y, Z_FRONT_PIN_REL])
                 rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
         }
 
         // Rear wall extensions on the back face (+Y) that give the hinge pins more trailing support
         // without blocking the center rear cutouts for power and USB access.
-        xcopies(SLED_W - SLED_WALL) translate([0, SLED_D/2 + SLED_REAR_EXTENSION/2, 0])
-            cuboid([SLED_WALL, SLED_REAR_EXTENSION, SLED_H], anchor=CENTER);
+        xcopies(SLED_W - SLED_WALL) translate([0, SLED_D/2 + SLED_REAR_EXTENSION/4, -SLED_H/4])
+            cuboid([SLED_WALL, SLED_REAR_EXTENSION, SLED_H/2], anchor=CENTER);
     }
 
     // 6. High-Efficiency Anti-Friction Rib Contacts (Reduces FDM surface friction by >80%)
@@ -261,9 +260,9 @@ module non_printable_guide_pins() {
     // Visual-only hardware: side guide pins that run in chassis slots.
     color(PIN_COLOR)
     xcopies(SLED_W) {
-        translate([0, -PIN_DIST/2, Z_REAR_PIN_REL])
+        translate([0, SLED_REAR_PIN_Y, Z_REAR_PIN_REL])
             rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
-        translate([0, PIN_DIST/2, Z_FRONT_PIN_REL])
+        translate([0, SLED_FRONT_PIN_Y, Z_FRONT_PIN_REL])
             rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
     }
 }
@@ -310,8 +309,6 @@ function sample_track(pts, t) =
 
 module placed_trackpad_sled() {
     // Track progression is split into: slide-to-crest, detent drop, then hold.
-    segs = len(rear_track_pts) - 1;
-    crest_u = (len(rear_track_pts) - 3) / segs; // Crest index is point 3 for 6-point track.
     drop_end_phase = min(0.99, ANIM_EXTEND_PHASE + ANIM_DROP_PHASE);
 
     rear_crest_pos = rear_track_pts[len(rear_track_pts) - 3];
@@ -322,8 +319,8 @@ module placed_trackpad_sled() {
     slide_progress = !ANIMATE_TRAY
         ? (EXTEND_TRAY ? 1 : 0)
         : ($t <= ANIM_EXTEND_PHASE
-            ? clamp01(($t / max(0.0001, ANIM_EXTEND_PHASE)) * crest_u)
-            : crest_u);
+            ? clamp01($t / max(0.0001, ANIM_EXTEND_PHASE))
+            : 1);
 
     drop_progress = !ANIMATE_TRAY
         ? (EXTEND_TRAY ? 1 : 0)
@@ -341,52 +338,31 @@ module placed_trackpad_sled() {
     front_slide_pos = sample_track(front_track_pts, slide_progress);
 
     // Solve a base rigid transform so BOTH pin centers land on their cam tracks.
-    local_rear_y = -PIN_DIST/2;
+    local_rear_y = SLED_REAR_PIN_Y - SLED_D/2;
     local_rear_z = Z_REAR_PIN_REL;
-    local_front_y = PIN_DIST/2;
+    local_front_y = SLED_FRONT_PIN_Y - SLED_D/2;
     local_front_z = Z_FRONT_PIN_REL;
 
-    crest_world_dy = front_crest_pos[0] - rear_crest_pos[0];
-    crest_world_dz = front_crest_pos[1] - rear_crest_pos[1];
     local_dy = local_front_y - local_rear_y;
     local_dz = local_front_z - local_rear_z;
 
-    crest_pitch_deg = atan2(crest_world_dz, crest_world_dy) - atan2(local_dz, local_dy);
-    crest_c = cos(crest_pitch_deg);
-    crest_s = sin(crest_pitch_deg);
-    crest_ty = rear_crest_pos[0] - (local_rear_y*crest_c - local_rear_z*crest_s);
-    crest_tz = rear_crest_pos[1] - (local_rear_y*crest_s + local_rear_z*crest_c);
+    slide_level_ty = lerp(Y_CLOSED_TRAY_CENTER, Y_CLOSED_TRAY_CENTER - EFFECTIVE_TRAVEL, slide_progress);
+    slide_level_tz = Z_SLED_TRAVEL;
 
-    pivot_local_y = local_front_y;
-    pivot_local_z = local_front_z;
-    pivot_crest_world_y = FRONT_HINGE_POCKET_Y;
-    pivot_crest_world_z = front_crest_pos[1];
+    pivot_local_y = local_rear_y;
+    pivot_local_z = local_rear_z;
+    pivot_crest_world_y = slide_level_ty + local_rear_y;
+    pivot_crest_world_z = slide_level_tz + local_rear_z;
     pivot_seated_world_z = FRONT_HINGE_POCKET_BOTTOM_Z;
     vertical_drop_dz = pivot_seated_world_z - pivot_crest_world_z;
 
     in_vertical_drop_or_hold = (!ANIMATE_TRAY && EXTEND_TRAY) || (ANIMATE_TRAY && $t > ANIM_EXTEND_PHASE);
 
-    slide_world_dy = front_slide_pos[0] - rear_slide_pos[0];
-    slide_world_dz = front_slide_pos[1] - rear_slide_pos[1];
-    slide_pitch_deg = atan2(slide_world_dz, slide_world_dy) - atan2(local_dz, local_dy);
-    slide_c = cos(slide_pitch_deg);
-    slide_s = sin(slide_pitch_deg);
-    slide_ty = rear_slide_pos[0] - (local_rear_y*slide_c - local_rear_z*slide_s);
-    slide_tz = rear_slide_pos[1] - (local_rear_y*slide_s + local_rear_z*slide_c);
-
-    slide_pivot_is_front_track = front_slide_pos[0] > rear_slide_pos[0];
-    slide_pivot_world_y = slide_pivot_is_front_track ? front_slide_pos[0] : rear_slide_pos[0];
-    slide_pivot_world_z = slide_pivot_is_front_track ? front_slide_pos[1] : rear_slide_pos[1];
-    slide_pivot_local_y = slide_pivot_is_front_track ? local_front_y : local_rear_y;
-    slide_pivot_local_z = slide_pivot_is_front_track ? local_front_z : local_rear_z;
-
-    base_pitch_deg = in_vertical_drop_or_hold ? crest_pitch_deg : slide_pitch_deg;
-    base_ty = in_vertical_drop_or_hold ? crest_ty : slide_ty;
-    base_tz = in_vertical_drop_or_hold ? crest_tz + vertical_drop_dz * drop_progress : slide_tz;
-    pivot_world_y = in_vertical_drop_or_hold ? pivot_crest_world_y : slide_pivot_world_y;
-    pivot_world_z = in_vertical_drop_or_hold ? lerp(pivot_crest_world_z, pivot_seated_world_z, drop_progress) : slide_pivot_world_z;
-    pivot_local_y = in_vertical_drop_or_hold ? local_front_y : slide_pivot_local_y;
-    pivot_local_z = in_vertical_drop_or_hold ? local_front_z : slide_pivot_local_z;
+    base_pitch_deg = 0;
+    base_ty = slide_level_ty;
+    base_tz = in_vertical_drop_or_hold ? slide_level_tz + vertical_drop_dz * drop_progress : slide_level_tz;
+    pivot_world_y = base_ty + pivot_local_y;
+    pivot_world_z = base_tz + pivot_local_z;
 
     if (SHOW_ASSEMBLED) {
         // Stage 1: both pins follow cam tracks. Stage 2: tilt around the detent-seated rear pin.
@@ -400,7 +376,7 @@ module placed_trackpad_sled() {
     } else {
         // Spread modules out horizontally for explicit slicing preview examinations
         translate([CHASSIS_W/2 + SLED_W/2 + 20.0, 0, 0])
-            rot([tilt_deg, 0, 0], cp=[0, base_ty + pivot_local_y, base_tz + pivot_local_z])
+            rot([tilt_deg, 0, 0], cp=[0, pivot_world_y, pivot_world_z])
                 translate([0, base_ty, base_tz])
                     rot([base_pitch_deg, 0, 0]) {
                         tray_colored();
