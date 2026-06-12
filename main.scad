@@ -9,7 +9,9 @@ $fn = 32;
 
 // Optional non-printable hardware visualization
 SHOW_NON_PRINTABLE_PINS = true;
-PIN_COLOR = "gold";
+HINGE_PIN_COLOR = "purple";
+BODY_PIN_COLOR = "pink";
+TAB_EXTENSION_COLOR = "cyan";
 
 // Visual finish palette
 CHASSIS_COLOR = "lightgray";
@@ -77,8 +79,8 @@ SLED_W = TP_W + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_D = TP_D + 2 * SLED_WALL + 2 * TP_SLOP;
 SLED_H = TP_H_BACK + 2.0;
 SLED_REAR_EXTENSION = 14.0; // Extra rear wall extension to keep the hinge pin captured while the tray extends farther
-SLED_REAR_PIN_Y = SLED_D/2 + SLED_REAR_EXTENSION*0.5; // Rear pin sits in the rear extension tabs
-SLED_FRONT_PIN_Y = SLED_REAR_PIN_Y - PIN_DIST;        // Keep the front pin back in the tray body while preserving spacing
+SLED_HINGE_PIN_Y = SLED_D/2 + SLED_REAR_EXTENSION*0.5; // Hinge pin sits in the rear extension tabs
+SLED_BODY_PIN_Y = SLED_HINGE_PIN_Y - PIN_DIST;         // Guide pin sits in the tray body while preserving spacing
 
 // Derived Internal Channel/Tunnel Constraints
 TUNNEL_W = SLED_W + 2 * SLIDE_SLOP;
@@ -232,16 +234,17 @@ module trackpad_sled() {
             
             // 5. Through-bores for M3 guide pins (or screw shanks) on both side walls
             // Upper Rear Inserts
-            tag("remove") xcopies(SLED_W) translate([0, SLED_REAR_PIN_Y, Z_REAR_PIN_REL])
+                    tag("remove") xcopies(SLED_W) translate([0, SLED_HINGE_PIN_Y, Z_REAR_PIN_REL])
                 rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
                 
             // Lower Front Inserts
-            tag("remove") xcopies(SLED_W) translate([0, SLED_FRONT_PIN_Y, Z_FRONT_PIN_REL])
+                    tag("remove") xcopies(SLED_W) translate([0, SLED_BODY_PIN_Y, Z_FRONT_PIN_REL])
                 rot([0, 90, 0]) cyl(d=4.2, l=SLED_WALL*3, anchor=CENTER);
         }
 
         // Rear wall extensions on the back face (+Y) that give the hinge pins more trailing support
         // without blocking the center rear cutouts for power and USB access.
+        color(TAB_EXTENSION_COLOR)
         xcopies(SLED_W - SLED_WALL) translate([0, SLED_D/2 + SLED_REAR_EXTENSION/4, -SLED_H/4])
             cuboid([SLED_WALL, SLED_REAR_EXTENSION, SLED_H/2], anchor=CENTER);
     }
@@ -250,21 +253,9 @@ module trackpad_sled() {
     // Base contact wear-strips
     xcopies(SLED_W - 12.0, n=2) translate([0, 0, -SLED_H/2 - 0.25])
         cuboid([2.0, SLED_D - 15.0, 0.5], anchor=CENTER);
-        
-    // Lateral guide-path wear ribs
-    xcopies(SLED_W + 0.25, n=2) ycopies(SLED_D - 20.0, n=2)
-        cuboid([0.5, 10.0, SLED_H - 4.0], anchor=CENTER);
 }
 
 module non_printable_guide_pins() {
-    // Visual-only hardware: side guide pins that run in chassis slots.
-    color(PIN_COLOR)
-    xcopies(SLED_W) {
-        translate([0, SLED_REAR_PIN_Y, Z_REAR_PIN_REL])
-            rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
-        translate([0, SLED_FRONT_PIN_Y, Z_FRONT_PIN_REL])
-            rot([0, 90, 0]) cyl(d=PIN_DIAM, l=SLED_WALL + 2*PIN_PROTRUSION, anchor=CENTER);
-    }
 }
 
 module chassis_colored() {
@@ -338,34 +329,34 @@ module placed_trackpad_sled() {
     front_slide_pos = sample_track(front_track_pts, slide_progress);
 
     // Solve a base rigid transform so BOTH pin centers land on their cam tracks.
-    local_rear_y = SLED_REAR_PIN_Y - SLED_D/2;
+    local_rear_y = SLED_HINGE_PIN_Y - SLED_D/2;
     local_rear_z = Z_REAR_PIN_REL;
-    local_front_y = SLED_FRONT_PIN_Y - SLED_D/2;
+    local_front_y = SLED_BODY_PIN_Y - SLED_D/2;
     local_front_z = Z_FRONT_PIN_REL;
 
     local_dy = local_front_y - local_rear_y;
     local_dz = local_front_z - local_rear_z;
 
-    slide_level_ty = lerp(Y_CLOSED_TRAY_CENTER, Y_CLOSED_TRAY_CENTER - EFFECTIVE_TRAVEL, slide_progress);
+    // Extend the tray body past the old cam travel so the rear body edge reaches the chassis front.
+    extra_body_travel = max(0, SLED_D + FRONT_CLOSED_CLEARANCE - EFFECTIVE_TRAVEL);
+    slide_level_ty = lerp(Y_CLOSED_TRAY_CENTER, Y_CLOSED_TRAY_CENTER - (EFFECTIVE_TRAVEL + extra_body_travel), slide_progress);
     slide_level_tz = Z_SLED_TRAVEL;
 
-    pivot_local_y = local_rear_y;
-    pivot_local_z = local_rear_z;
-    pivot_crest_world_y = slide_level_ty + local_rear_y;
-    pivot_crest_world_z = slide_level_tz + local_rear_z;
+    rear_hinge_pin_world_y = slide_level_ty + (SLED_HINGE_PIN_Y - SLED_D/2);
+    rear_hinge_pin_world_z = slide_level_tz + Z_REAR_PIN_REL;
     pivot_seated_world_z = FRONT_HINGE_POCKET_BOTTOM_Z;
-    vertical_drop_dz = pivot_seated_world_z - pivot_crest_world_z;
+    vertical_drop_dz = pivot_seated_world_z - rear_hinge_pin_world_z;
 
     in_vertical_drop_or_hold = (!ANIMATE_TRAY && EXTEND_TRAY) || (ANIMATE_TRAY && $t > ANIM_EXTEND_PHASE);
 
     base_pitch_deg = 0;
     base_ty = slide_level_ty;
     base_tz = in_vertical_drop_or_hold ? slide_level_tz + vertical_drop_dz * drop_progress : slide_level_tz;
-    pivot_world_y = base_ty + pivot_local_y;
-    pivot_world_z = base_tz + pivot_local_z;
+    pivot_world_y = rear_hinge_pin_world_y;
+    pivot_world_z = in_vertical_drop_or_hold ? lerp(rear_hinge_pin_world_z, pivot_seated_world_z, drop_progress) : rear_hinge_pin_world_z;
 
     if (SHOW_ASSEMBLED) {
-        // Stage 1: both pins follow cam tracks. Stage 2: tilt around the detent-seated rear pin.
+        // Stage 1: slide level. Stage 2: tilt around the rear purple hinge pin.
         rot([tilt_deg, 0, 0], cp=[0, pivot_world_y, pivot_world_z])
             translate([0, base_ty, base_tz])
                 rot([base_pitch_deg, 0, 0]) {
@@ -380,8 +371,6 @@ module placed_trackpad_sled() {
                 translate([0, base_ty, base_tz])
                     rot([base_pitch_deg, 0, 0]) {
                         tray_colored();
-                        if (SHOW_NON_PRINTABLE_PINS)
-                            non_printable_guide_pins();
                     }
     }
 }
