@@ -1,29 +1,45 @@
 include <BOSL2/std.scad>
-
-// Set global resolution for rendering arcs, cylinders, and slots
-$fn = 32;
-
 // ============================================================================
 // VISUALIZATION & CONFIGURATION CONTROL
 // ============================================================================
 
-// Optional non-printable hardware visualization
+// [Camera Control]
+// Check to reset/lock to initial view. Uncheck to unlock manual navigation.
+Reset_camera_on_reload = false; 
+
+// Interactively control rendering mode via OpenSCAD Customizer
+SHOW_ASSEMBLED = true; 
 SHOW_NON_PRINTABLE_PINS = true;
-HINGE_PIN_COLOR = "purple";
-BODY_PIN_COLOR = "pink";
-TAB_EXTENSION_COLOR = "cyan";
+EXTEND_TRAY = false;    // Simulates sliding deployment path mechanics
+RENDER_CHASSIS = true;  // Allows rendering chassis alone
+RENDER_TRAY = true;     // Allows rendering trackpad sled alone
+CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
+
+/* [Hidden] Hide all other variables from OpenSCAD Customizer */
+
+// Set global resolution for rendering arcs, cylinders, and slots
+$fn = 32;
+
+// Initial camera configurations to fit the entire, extended assembly within the initial frustum
+init_translation = [-10, -55, 10];
+init_rotation    = [70, 0, 40];
+init_distance    = 1250;
+
+// Only assign viewport variables if the lock toggle is active
+$vpt = Reset_camera_on_reload ? init_translation : $vpt;
+$vpr = Reset_camera_on_reload ? init_rotation    : $vpr;
+$vpd = Reset_camera_on_reload ? init_distance    : $vpd;
+$vpf = 22.5;
 
 // Visual finish palette
 CHASSIS_COLOR = "lightgray";
 CHASSIS_INNER_COLOR = "gainsboro";
 TRAY_INNER_COLOR = "slategray";
+// Optional non-printable hardware visualization
+HINGE_PIN_COLOR = "purple";
+BODY_PIN_COLOR = "pink";
+TAB_EXTENSION_COLOR = "cyan";
 
-// Interactively control rendering mode via editor
-SHOW_ASSEMBLED = true; 
-EXTEND_TRAY = false;    // Simulates sliding deployment path mechanics
-RENDER_CHASSIS = true;  // Allows rendering chassis alone
-RENDER_TRAY = true;     // Allows rendering trackpad sled alone
-CUTAWAY_VIEW = false;   // Clips view to reveal internal geometry
 
 // OpenSCAD animation controls ($t runs from 0.0 to 1.0)
 ANIMATE_TRAY = true;
