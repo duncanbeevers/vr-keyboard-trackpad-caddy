@@ -87,6 +87,23 @@ union() {
                 except=[FRONT, BACK]
             );
         }
+
+        // Slope wedge: front edge lower than rear edge
+        tag("cutout") hull() {
+            up(TRACKPAD_FRAME_FRONT_HEIGHT)
+            fwd(TRACKPAD_DEPTH / 2)
+            cuboid(
+                [TRACKPAD_WIDTH * 1.1, 0.1, TRACKPAD_FRAME_REAR_HEIGHT],
+                anchor=BOT+FRONT
+            );
+
+            up(TRACKPAD_FRAME_REAR_HEIGHT)
+            back(TRACKPAD_DEPTH / 2)
+            cuboid(
+                [TRACKPAD_WIDTH * 1.1, 0.1, TRACKPAD_FRAME_REAR_HEIGHT],
+                anchor=BOT+BACK
+            );
+        }
     }
 
     // 3. Struts and Rear Fork Assembly (not affected by port notches)
