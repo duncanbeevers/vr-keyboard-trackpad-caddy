@@ -15,12 +15,13 @@ TRACKPAD_POWER_SWITCH_PORT_DEPTH = 10;
 FOOTPAD_SUPPORT_WIDTH = 12;
 FOOTPAD_SUPPORT_LENGTH = 12; 
 FOOTPAD_SUPPORT_HEIGHT = 2;
+PORT_ROUNDING_RADIUS = 2;
 
 // Keyboard Strut settings
 STRUT_LENGTH = 131;
 STRUT_WIDTH = 20;
 STRUT_BATTERY_CHANNEL_WIDTH = 25;
-STRUT_HEIGHT = 20;
+STRUT_HEIGHT = 5;
 STRUT_TINE_HEIGHT = 5;
 STRUT_TINE_THICKNESS = 5;
 STRUT_ROUNDING = 1;
@@ -29,7 +30,8 @@ STRUT_SEPARATION = 70;
 /* [Hidden] */
 
 $fn = 100;
-BOOLEAN_EPS = 0.1;
+BOOLEAN_EPS = 1;
+SLOP = 0.1;
 
 module trackpad_outer_solid(height) {
     linear_extrude(height=height)
@@ -56,7 +58,18 @@ module trackpad_outer_inverse(height) {
             );
 
         translate([0, 0, -BOOLEAN_EPS / 2])
-            trackpad_outer_solid(height + BOOLEAN_EPS);
+        trackpad_outer_solid(height + BOOLEAN_EPS);
+    }
+}
+
+module trackpad_notch_fillet(position, z_adjust, rotation) {
+    translate(position + [0, 0, z_adjust])
+    rotate(rotation)
+    linear_extrude(height = TRACKPAD_WALL_THICKNESS + SLOP * 2, v = [0, 0, 1])
+    difference() {
+        square([PORT_ROUNDING_RADIUS, PORT_ROUNDING_RADIUS]);
+        translate([PORT_ROUNDING_RADIUS, PORT_ROUNDING_RADIUS])
+        circle(r = PORT_ROUNDING_RADIUS, $fn = $fn);
     }
 }
 
@@ -66,13 +79,36 @@ union() {
     diff("cutout") {
         union() {
             // 1. Trackpad Frame
-            rect_tube(
-                size=[TRACKPAD_WIDTH, TRACKPAD_DEPTH], 
-                wall=TRACKPAD_WALL_THICKNESS, 
-                h=TRACKPAD_FRAME_REAR_HEIGHT,
-                rounding=TRACKPAD_CORNER_RADIUS,
-                anchor=BOT
-            );
+            difference() {
+                rect_tube(
+                    size=[TRACKPAD_WIDTH, TRACKPAD_DEPTH], 
+                    wall=TRACKPAD_WALL_THICKNESS, 
+                    h=TRACKPAD_FRAME_REAR_HEIGHT,
+                    rounding=TRACKPAD_CORNER_RADIUS,
+                    anchor=BOT
+                );
+
+                // Right-edge power switch cut-out fillet.
+                trackpad_notch_fillet(
+                    position = [
+                        TRACKPAD_WIDTH / 2 + SLOP,
+                        TRACKPAD_DEPTH / 2 - TRACKPAD_POWER_SWITCH_PORT_DEPTH,
+                        TRACKPAD_FRAME_REAR_HEIGHT
+                    ],
+                    z_adjust = -0.53,
+                    rotation = [90, 90, -90]
+                );
+                // Rear-edge power switch cut-out fillet.
+                trackpad_notch_fillet(
+                    position = [
+                        TRACKPAD_WIDTH / 2 + SLOP - TRACKPAD_POWER_SWITCH_PORT_WIDTH,
+                        TRACKPAD_DEPTH / 2 - TRACKPAD_WALL_THICKNESS - SLOP,
+                        TRACKPAD_FRAME_REAR_HEIGHT
+                    ],
+                    z_adjust = 0,
+                    rotation = [180, 90, -90]
+                );
+            }
 
             // 2. Corner Supports
             difference() {
@@ -108,37 +144,7 @@ union() {
             }
         }
 
-        // 4. Port Notches (relative to trackpad frame only)
-        tag("cutout") back(TRACKPAD_DEPTH / 2) {
-            // Power-switch cut-out
-            right(TRACKPAD_WIDTH / 2)
-            up(TRACKPAD_FRAME_REAR_HEIGHT)
-            cuboid(
-                [
-                    TRACKPAD_POWER_SWITCH_PORT_WIDTH,
-                    (TRACKPAD_POWER_SWITCH_PORT_DEPTH * 2) + 0.1,
-                    TRACKPAD_POWER_SWITCH_PORT_HEIGHT
-                ],
-                anchor=TOP+RIGHT,
-                rounding=2,
-                except=[BACK, RIGHT, TOP]
-            );
-
-            // Charging port cut-out
-            up(TRACKPAD_FRAME_REAR_HEIGHT / 2)
-            cuboid(
-                [
-                    TRACKPAD_CHARGING_PORT_WIDTH,
-                    (TRACKPAD_WALL_THICKNESS * 2) + 0.1,
-                    TRACKPAD_CHARGING_PORT_HEIGHT
-                ],
-                anchor=CENTER,
-                rounding=2,
-                except=[FRONT, BACK]
-            );
-        }
-
-        // Slope wedge: front edge lower than rear edge
+        // 3. Slope wedge: front edge lower than rear edge
         tag("cutout") hull() {
             up(TRACKPAD_FRAME_FRONT_HEIGHT)
             fwd((TRACKPAD_DEPTH / 2) + 0.2)
@@ -154,15 +160,45 @@ union() {
                 anchor=BOT+BACK
             );
         }
+
+        // 4. Trackpad frame notches
+        tag("cutout") back(TRACKPAD_DEPTH / 2) {
+            // Power-switch cut-out
+            right(TRACKPAD_WIDTH / 2)
+            up(TRACKPAD_FRAME_REAR_HEIGHT)
+            cuboid(
+                [
+                    TRACKPAD_POWER_SWITCH_PORT_WIDTH,
+                    (TRACKPAD_POWER_SWITCH_PORT_DEPTH * 2) + SLOP,
+                    TRACKPAD_POWER_SWITCH_PORT_HEIGHT
+                ],
+                anchor=TOP+RIGHT,
+                rounding=PORT_ROUNDING_RADIUS,
+                except=[BACK, RIGHT, TOP]
+            );
+
+            // Charging port cut-out
+            up(TRACKPAD_FRAME_REAR_HEIGHT / 2)
+            cuboid(
+                [
+                    TRACKPAD_CHARGING_PORT_WIDTH,
+                    (TRACKPAD_WALL_THICKNESS * 2) + SLOP,
+                    TRACKPAD_CHARGING_PORT_HEIGHT
+                ],
+                anchor=CENTER,
+                rounding=PORT_ROUNDING_RADIUS,
+                except=[FRONT, BACK]
+            );
+        }
     }
 
-    // 3. Struts and Rear Fork Assembly (not affected by port notches)
+    // 5. Struts and Rear Fork Assembly (not affected by port notches)
     back(TRACKPAD_DEPTH / 2) {
         for (x = [-STRUT_SEPARATION / 2, STRUT_SEPARATION / 2]) {
             translate([x, 0, 0]) {
                 // Strut body
                 cuboid(
-                    [STRUT_WIDTH, STRUT_LENGTH, 8],
+                    [STRUT_WIDTH, STRUT_LENGTH, STRUT_HEIGHT],
                     anchor=FRONT+BOT,
                     rounding=STRUT_ROUNDING,
                     except=[FRONT, BACK]
