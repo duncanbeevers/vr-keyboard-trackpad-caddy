@@ -9,6 +9,9 @@ TRACKPAD_FRAME_FRONT_HEIGHT = 5;
 TRACKPAD_FRAME_REAR_HEIGHT = 11;
 TRACKPAD_CHARGING_PORT_WIDTH = 10;
 TRACKPAD_CHARGING_PORT_HEIGHT = 6;
+TRACKPAD_POWER_SWITCH_PORT_WIDTH = 20;
+TRACKPAD_POWER_SWITCH_PORT_HEIGHT = TRACKPAD_FRAME_REAR_HEIGHT / 1.5;
+TRACKPAD_POWER_SWITCH_PORT_DEPTH = 10;
 FOOTPAD_SUPPORT_WIDTH = 12;
 FOOTPAD_SUPPORT_LENGTH = 12; 
 FOOTPAD_SUPPORT_HEIGHT = 2;
@@ -52,8 +55,8 @@ union() {
                 )
                 translate(
                     x_dir > 0 ?
-                        [-FOOTPAD_SUPPORT_WIDTH/2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0] :
-                        [FOOTPAD_SUPPORT_WIDTH/2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0]
+                        [-FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0] :
+                        [FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0]
                 )
 
                 cuboid(
@@ -70,9 +73,20 @@ union() {
         }
 
         // 4. Port Notches (relative to trackpad frame only)
-        tag("cutout") back(TRACKPAD_DEPTH/2) {
+        tag("cutout") back(TRACKPAD_DEPTH / 2) {
             // Power-switch cut-out
-            translate([-40, 0, 0]) cuboid([20, TRACKPAD_WALL_THICKNESS*2, 6], anchor=BOT);
+            right(TRACKPAD_WIDTH / 2)
+            up(TRACKPAD_FRAME_REAR_HEIGHT)
+            cuboid(
+                [
+                    TRACKPAD_POWER_SWITCH_PORT_WIDTH,
+                    (TRACKPAD_POWER_SWITCH_PORT_DEPTH * 2) + 0.1,
+                    TRACKPAD_POWER_SWITCH_PORT_HEIGHT
+                ],
+                anchor=TOP+RIGHT,
+                rounding=2,
+                except=[BACK, RIGHT, TOP]
+            );
 
             // Charging port cut-out
             up(TRACKPAD_FRAME_REAR_HEIGHT / 2)
@@ -91,16 +105,16 @@ union() {
         // Slope wedge: front edge lower than rear edge
         tag("cutout") hull() {
             up(TRACKPAD_FRAME_FRONT_HEIGHT)
-            fwd(TRACKPAD_DEPTH / 2)
+            fwd((TRACKPAD_DEPTH / 2) + 0.2)
             cuboid(
-                [TRACKPAD_WIDTH * 1.1, 0.1, TRACKPAD_FRAME_REAR_HEIGHT],
+                [TRACKPAD_WIDTH * 1.1, 0.3, TRACKPAD_FRAME_REAR_HEIGHT],
                 anchor=BOT+FRONT
             );
 
             up(TRACKPAD_FRAME_REAR_HEIGHT)
-            back(TRACKPAD_DEPTH / 2)
+            back((TRACKPAD_DEPTH / 2) + 0.2)
             cuboid(
-                [TRACKPAD_WIDTH * 1.1, 0.1, TRACKPAD_FRAME_REAR_HEIGHT],
+                [TRACKPAD_WIDTH * 1.1, 0.3, TRACKPAD_FRAME_REAR_HEIGHT],
                 anchor=BOT+BACK
             );
         }
