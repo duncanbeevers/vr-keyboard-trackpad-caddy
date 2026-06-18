@@ -4,7 +4,7 @@ include <BOSL2/std.scad>
 TRACKPAD_WIDTH = 160;
 TRACKPAD_DEPTH = 115;
 TRACKPAD_CORNER_RADIUS = 10;
-TRACKPAD_WALL_THICKNESS = 3;
+TRACKPAD_WALL_THICKNESS = 2;
 TRACKPAD_FRAME_FRONT_HEIGHT = 5;
 TRACKPAD_FRAME_REAR_HEIGHT = 11;
 TRACKPAD_CHARGING_PORT_WIDTH = 10;
@@ -29,6 +29,36 @@ STRUT_SEPARATION = 70;
 /* [Hidden] */
 
 $fn = 100;
+BOOLEAN_EPS = 0.1;
+
+module trackpad_outer_solid(height) {
+    linear_extrude(height=height)
+        offset(r=TRACKPAD_CORNER_RADIUS)
+            square(
+                [
+                    TRACKPAD_WIDTH - (TRACKPAD_CORNER_RADIUS * 2),
+                    TRACKPAD_DEPTH - (TRACKPAD_CORNER_RADIUS * 2)
+                ],
+                center=true
+            );
+}
+
+module trackpad_outer_inverse(height) {
+    difference() {
+        translate([0, 0, -BOOLEAN_EPS / 2])
+            cuboid(
+                [
+                    TRACKPAD_WIDTH + BOOLEAN_EPS,
+                    TRACKPAD_DEPTH + BOOLEAN_EPS,
+                    height + BOOLEAN_EPS
+                ],
+                anchor=BOT
+            );
+
+        translate([0, 0, -BOOLEAN_EPS / 2])
+            trackpad_outer_solid(height + BOOLEAN_EPS);
+    }
+}
 
 // --- Main Assembly ---
 union() {
@@ -45,30 +75,36 @@ union() {
             );
 
             // 2. Corner Supports
-            for (x_dir = [-1, 1], y_dir = [-1, 1]) {
-                translate(
-                    [
-                        x_dir * ((TRACKPAD_WIDTH / 2) - TRACKPAD_WALL_THICKNESS),
-                        y_dir * ((TRACKPAD_DEPTH / 2) - TRACKPAD_WALL_THICKNESS),
-                        0
-                    ]
-                )
-                translate(
-                    x_dir > 0 ?
-                        [-FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0] :
-                        [FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0]
-                )
+            difference() {
+                union() {
+                    for (x_dir = [-1, 1], y_dir = [-1, 1]) {
+                        translate(
+                            [
+                                x_dir * ((TRACKPAD_WIDTH / 2) - TRACKPAD_WALL_THICKNESS),
+                                y_dir * ((TRACKPAD_DEPTH / 2) - TRACKPAD_WALL_THICKNESS),
+                                0
+                            ]
+                        )
+                        translate(
+                            x_dir > 0 ?
+                                [-FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0] :
+                                [FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0]
+                        )
 
-                cuboid(
-                    [FOOTPAD_SUPPORT_WIDTH, FOOTPAD_SUPPORT_LENGTH, FOOTPAD_SUPPORT_HEIGHT], 
-                    rounding=STRUT_ROUNDING,
-                    edges="Z",
-                    anchor=BOT+BACK,
-                    except=[
-                        (y_dir > 0 ? BACK : FRONT) + (x_dir > 0 ? LEFT : RIGHT),
-                        (y_dir > 0 ? FRONT : BACK) + (x_dir > 0 ? RIGHT : LEFT)
-                    ],
-                );
+                        cuboid(
+                            [FOOTPAD_SUPPORT_WIDTH, FOOTPAD_SUPPORT_LENGTH, FOOTPAD_SUPPORT_HEIGHT], 
+                            rounding=STRUT_ROUNDING,
+                            edges="Z",
+                            anchor=BOT+BACK,
+                            except=[
+                                (y_dir > 0 ? BACK : FRONT) + (x_dir > 0 ? LEFT : RIGHT),
+                                (y_dir > 0 ? FRONT : BACK) + (x_dir > 0 ? RIGHT : LEFT)
+                            ],
+                        );
+                    }
+                }
+
+                trackpad_outer_inverse(FOOTPAD_SUPPORT_HEIGHT);
             }
         }
 
