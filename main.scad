@@ -1,227 +1,103 @@
 include <BOSL2/std.scad>
+$VPD = 300;
 
-// Trackpad Settings
-TRACKPAD_WIDTH = 160;
-TRACKPAD_DEPTH = 115;
+/* [Trackpad Settings] */
+TRACKPAD = [160,115,11];
 TRACKPAD_CORNER_RADIUS = 10;
 TRACKPAD_WALL_THICKNESS = 2;
 TRACKPAD_FRAME_FRONT_HEIGHT = 5;
-TRACKPAD_FRAME_REAR_HEIGHT = 11;
-TRACKPAD_CHARGING_PORT_WIDTH = 10;
-TRACKPAD_CHARGING_PORT_HEIGHT = 6;
-TRACKPAD_POWER_SWITCH_PORT_WIDTH = 20;
-TRACKPAD_POWER_SWITCH_PORT_HEIGHT = TRACKPAD_FRAME_REAR_HEIGHT / 1.5;
-TRACKPAD_POWER_SWITCH_PORT_DEPTH = 10;
-FOOTPAD_SUPPORT_WIDTH = 12;
-FOOTPAD_SUPPORT_LENGTH = 12; 
-FOOTPAD_SUPPORT_HEIGHT = 2;
+TRACKPAD_CHARGING_PORT = [10,TRACKPAD_WALL_THICKNESS,6];
+TRACKPAD_POWER_SWITCH_PORT = [21,11,TRACKPAD.z / 1.5];
+FOOTPAD_SUPPORT = [12,12,2];
 PORT_ROUNDING_RADIUS = 2;
 
-// Keyboard Strut settings
-STRUT_LENGTH = 131;
-STRUT_WIDTH = 20;
-STRUT_BATTERY_CHANNEL_WIDTH = 25;
-STRUT_HEIGHT = 5;
-STRUT_TINE_HEIGHT = 5;
-STRUT_TINE_THICKNESS = 5;
+/* [Keyboard Strut settings] */
+STRUT = [20,131,4];
+STRUT_TINE_FRONT = [STRUT.x,5,5];
+STRUT_TINE_REAR = [STRUT.x,5,11]; // 8mm keyboard rise + thin lip for clips
 STRUT_ROUNDING = 1;
+STRUT_BATTERY_CHANNEL_WIDTH = 25;
 STRUT_SEPARATION = 70;
+STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; // Extends into struts to avoid rounding issues.
+STRUT_CROSSBRACE_OFFSET = 20;
+CLIP_SIZE = 2;
+DOVETAIL_OFFSET = (TRACKPAD.y + STRUT.y) / 2;
 
 /* [Hidden] */
 
-$fn = 100;
-BOOLEAN_EPS = 1;
-SLOP = 0.1;
+$fn = 72;
 
-module trackpad_outer_solid(height) {
-    linear_extrude(height=height)
-        offset(r=TRACKPAD_CORNER_RADIUS)
-            square(
-                [
-                    TRACKPAD_WIDTH - (TRACKPAD_CORNER_RADIUS * 2),
-                    TRACKPAD_DEPTH - (TRACKPAD_CORNER_RADIUS * 2)
-                ],
-                center=true
-            );
-}
+// Main
+translate([0, DOVETAIL_OFFSET, 0])
+partition([TRACKPAD.x, TRACKPAD.y + STRUT.y, STRUT_TINE_REAR.z + STRUT.z], spread = 20, cutpath = "flat")
+translate([0, -DOVETAIL_OFFSET, 0])
+frame()
+    position(BACK+BOT) struts(anchor = FWD+BOT);
 
-module trackpad_outer_inverse(height) {
-    difference() {
-        translate([0, 0, -BOOLEAN_EPS / 2])
-            cuboid(
-                [
-                    TRACKPAD_WIDTH + BOOLEAN_EPS,
-                    TRACKPAD_DEPTH + BOOLEAN_EPS,
-                    height + BOOLEAN_EPS
-                ],
-                anchor=BOT
-            );
-
-        translate([0, 0, -BOOLEAN_EPS / 2])
-        trackpad_outer_solid(height + BOOLEAN_EPS);
-    }
-}
-
-module trackpad_notch_fillet(position, z_adjust, rotation) {
-    translate(position + [0, 0, z_adjust])
-    rotate(rotation)
-    linear_extrude(height = TRACKPAD_WALL_THICKNESS + SLOP * 2, v = [0, 0, 1])
-    difference() {
-        square([PORT_ROUNDING_RADIUS, PORT_ROUNDING_RADIUS]);
-        translate([PORT_ROUNDING_RADIUS, PORT_ROUNDING_RADIUS])
-        circle(r = PORT_ROUNDING_RADIUS, $fn = $fn);
-    }
-}
-
-// --- Main Assembly ---
-union() {
-    // Trackpad frame with port notches
-    diff("cutout") {
+// Trackpad frame with port notches
+module frame(anchor = CENTER, spin=0, orient=UP) {
+    attachable(anchor, spin, orient, size = TRACKPAD) {
         union() {
-            // 1. Trackpad Frame
-            difference() {
-                rect_tube(
-                    size=[TRACKPAD_WIDTH, TRACKPAD_DEPTH], 
-                    wall=TRACKPAD_WALL_THICKNESS, 
-                    h=TRACKPAD_FRAME_REAR_HEIGHT,
-                    rounding=TRACKPAD_CORNER_RADIUS,
-                    anchor=BOT
-                );
+            diff() {
+                // 1. Trackpad Frame
+                rect_tube(size=[TRACKPAD.x, TRACKPAD.y], h=TRACKPAD.z, wall=TRACKPAD_WALL_THICKNESS, rounding=TRACKPAD_CORNER_RADIUS, anchor = CENTER);
 
-                // Right-edge power switch cut-out fillet.
-                trackpad_notch_fillet(
-                    position = [
-                        TRACKPAD_WIDTH / 2 + SLOP,
-                        TRACKPAD_DEPTH / 2 - TRACKPAD_POWER_SWITCH_PORT_DEPTH,
-                        TRACKPAD_FRAME_REAR_HEIGHT
-                    ],
-                    z_adjust = -0.53,
-                    rotation = [90, 90, -90]
-                );
-                // Rear-edge power switch cut-out fillet.
-                trackpad_notch_fillet(
-                    position = [
-                        TRACKPAD_WIDTH / 2 + SLOP - TRACKPAD_POWER_SWITCH_PORT_WIDTH,
-                        TRACKPAD_DEPTH / 2 - TRACKPAD_WALL_THICKNESS - SLOP,
-                        TRACKPAD_FRAME_REAR_HEIGHT
-                    ],
-                    z_adjust = 0,
-                    rotation = [180, 90, -90]
-                );
-            }
-
-            // 2. Corner Supports
-            difference() {
-                union() {
-                    for (x_dir = [-1, 1], y_dir = [-1, 1]) {
-                        translate(
-                            [
-                                x_dir * ((TRACKPAD_WIDTH / 2) - TRACKPAD_WALL_THICKNESS),
-                                y_dir * ((TRACKPAD_DEPTH / 2) - TRACKPAD_WALL_THICKNESS),
-                                0
-                            ]
-                        )
-                        translate(
-                            x_dir > 0 ?
-                                [-FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0] :
-                                [FOOTPAD_SUPPORT_WIDTH / 2, (y_dir > 0 ? 0 : FOOTPAD_SUPPORT_LENGTH), 0]
-                        )
-
-                        cuboid(
-                            [FOOTPAD_SUPPORT_WIDTH, FOOTPAD_SUPPORT_LENGTH, FOOTPAD_SUPPORT_HEIGHT], 
-                            rounding=STRUT_ROUNDING,
-                            edges="Z",
-                            anchor=BOT+BACK,
-                            except=[
-                                (y_dir > 0 ? BACK : FRONT) + (x_dir > 0 ? LEFT : RIGHT),
-                                (y_dir > 0 ? FRONT : BACK) + (x_dir > 0 ? RIGHT : LEFT)
-                            ],
-                        );
-                    }
+                // 2. Corner Supports
+                grid_copies(n = [2,2], spacing = [TRACKPAD.x - FOOTPAD_SUPPORT.x, TRACKPAD.y - FOOTPAD_SUPPORT.y]) {
+                    position(BOT)
+                    cuboid(FOOTPAD_SUPPORT, rounding = PORT_ROUNDING_RADIUS, edges = "Z", anchor = BOT)
+                        edge_mask([$col * 2 - 1, $row * 2 - 1, 0])
+                            rounding_edge_mask(l=$parent_size.z+0.01, r=TRACKPAD_CORNER_RADIUS);      //edge mask has implied "remove" tag
                 }
+                // 3. Trackpad Power Switch Port    
+                position(BACK+RIGHT+TOP) move([1,1,0]) tag("remove")
+                    rounded_prism(rect([TRACKPAD_POWER_SWITCH_PORT.x, TRACKPAD_POWER_SWITCH_PORT.y]), height = TRACKPAD_POWER_SWITCH_PORT.z,
+                        k = 0.93, joint_bot = PORT_ROUNDING_RADIUS, joint_top = -PORT_ROUNDING_RADIUS, joint_sides = 0.01, anchor = TOP+RIGHT+BACK);
 
-                trackpad_outer_inverse(FOOTPAD_SUPPORT_HEIGHT);
+                // 4. Trackpad Charging Port
+                position(BACK) tag("remove")
+                    back(0.1)
+                    cuboid(TRACKPAD_CHARGING_PORT + [0,0.2,0], rounding = PORT_ROUNDING_RADIUS, edges = "Y", anchor = BACK);
+
+                // 5.  Profiling Wedge
+                position(TOP) yrot(180) tag("remove")
+                down(0.01)
+                wedge(TRACKPAD+[0.1,0.1,-TRACKPAD_FRAME_FRONT_HEIGHT], anchor = BOT);
             }
+            // Front keyboard clip
+            position(BACK+TOP)
+            xcyl(STRUT.x, d = CLIP_SIZE, rounding = CLIP_SIZE / 2, anchor = TOP);
         }
-
-        // 3. Slope wedge: front edge lower than rear edge
-        tag("cutout") hull() {
-            up(TRACKPAD_FRAME_FRONT_HEIGHT)
-            fwd((TRACKPAD_DEPTH / 2) + 0.2)
-            cuboid(
-                [TRACKPAD_WIDTH * 1.1, 0.3, TRACKPAD_FRAME_REAR_HEIGHT],
-                anchor=BOT+FRONT
-            );
-
-            up(TRACKPAD_FRAME_REAR_HEIGHT)
-            back((TRACKPAD_DEPTH / 2) + 0.2)
-            cuboid(
-                [TRACKPAD_WIDTH * 1.1, 0.3, TRACKPAD_FRAME_REAR_HEIGHT],
-                anchor=BOT+BACK
-            );
-        }
-
-        // 4. Trackpad frame notches
-        tag("cutout") back(TRACKPAD_DEPTH / 2) {
-            // Power-switch cut-out
-            right(TRACKPAD_WIDTH / 2)
-            up(TRACKPAD_FRAME_REAR_HEIGHT)
-            cuboid(
-                [
-                    TRACKPAD_POWER_SWITCH_PORT_WIDTH,
-                    (TRACKPAD_POWER_SWITCH_PORT_DEPTH * 2) + SLOP,
-                    TRACKPAD_POWER_SWITCH_PORT_HEIGHT
-                ],
-                anchor=TOP+RIGHT,
-                rounding=PORT_ROUNDING_RADIUS,
-                except=[BACK, RIGHT, TOP]
-            );
-
-            // Charging port cut-out
-            up(TRACKPAD_FRAME_REAR_HEIGHT / 2)
-            cuboid(
-                [
-                    TRACKPAD_CHARGING_PORT_WIDTH,
-                    (TRACKPAD_WALL_THICKNESS * 2) + SLOP,
-                    TRACKPAD_CHARGING_PORT_HEIGHT
-                ],
-                anchor=CENTER,
-                rounding=PORT_ROUNDING_RADIUS,
-                except=[FRONT, BACK]
-            );
-        }
+        children();
     }
+}
 
-    // 5. Struts and Rear Fork Assembly (not affected by port notches)
-    back(TRACKPAD_DEPTH / 2) {
-        for (x = [-STRUT_SEPARATION / 2, STRUT_SEPARATION / 2]) {
-            translate([x, 0, 0]) {
+// 6. Struts and Rear Fork Assembly
+module struts(anchor = CENTER, spin=0, orient=UP) {
+    attachable(anchor, spin, orient, size = [STRUT_SEPARATION + 1 * STRUT.x, STRUT.y, STRUT.z]){
+        union() {
+            xcopies(n = 2, spacing = STRUT_SEPARATION) {
                 // Strut body
-                cuboid(
-                    [STRUT_WIDTH, STRUT_LENGTH, STRUT_HEIGHT],
-                    anchor=FRONT+BOT,
-                    rounding=STRUT_ROUNDING,
-                    except=[FRONT, BACK]
-                );
-
-                translate([0, STRUT_LENGTH, 0]) {
-                    // Far rear tine
-                    translate([0, 0, 0])
-                    cuboid(
-                        [STRUT_WIDTH, STRUT_TINE_THICKNESS, STRUT_TINE_HEIGHT + STRUT_HEIGHT],
-                        rounding=STRUT_ROUNDING,
-                        anchor=BOT
-                    );
-
+                cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
                     // Near tine
-                    translate([0, -STRUT_BATTERY_CHANNEL_WIDTH, 0])
-                    cuboid(
-                        [STRUT_WIDTH, STRUT_TINE_THICKNESS, STRUT_TINE_HEIGHT + STRUT_HEIGHT],
-                        rounding=2,
-                        anchor=BOT
-                    );
+                    align(TOP,BACK) fwd(STRUT_BATTERY_CHANNEL_WIDTH)
+                        cuboid(STRUT_TINE_FRONT, rounding=STRUT_ROUNDING, except=BOT);
+                    // Far rear tine
+                    align(TOP,BACK) 
+                        cuboid(STRUT_TINE_REAR, rounding=STRUT_ROUNDING, except=[BOT,FRONT])
+                        // Rear keyboard clips
+                        align(FRONT,TOP)
+                        #cuboid([STRUT.x,CLIP_SIZE,CLIP_SIZE], except=[BACK], rounding=STRUT_ROUNDING);
+                    }
+                    // Split strut in order to create two pieces which will dovetail
+                    // Negative Dovetail
+                    // Positive Dovetail
+                    
                 }
-            }
+                // Crossbrace between the two struts.        
+                position(BOT) back(STRUT_CROSSBRACE_OFFSET)
+                    cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
         }
+        children();
     }
 }
