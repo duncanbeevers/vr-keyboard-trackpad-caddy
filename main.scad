@@ -46,6 +46,7 @@ module partition_and_dovetail(y_position, spread) {
     DOVETAIL_ANGLE = 20;  // Locking flare angle
     DOVETAIL_TAPER = 5;
     DOVETAIL_Z = -TRACKPAD.z / 2;  // Keep dovetails anchored to the bottom of the struts.
+    BACK_HALF_CENTER_Y = (Y_CUT_PLANE + TRACKPAD.y / 2 + STRUT.y) / 2;
     // DOVETAIL_Z = 0;
 
     if (spread == 0) {
@@ -66,8 +67,8 @@ module partition_and_dovetail(y_position, spread) {
             }
         }
         
-        // 2. BACK HALF ASSEMBLY (Moves Backward)
-        translate([0, spread/2, 0]) {
+        // 2. BACK HALF ASSEMBLY (Nests inside frame footprint for printing)
+        translate([0, -spread/2 - BACK_HALF_CENTER_Y, 0]) {
             difference() {
                 intersection() {
                     children();
