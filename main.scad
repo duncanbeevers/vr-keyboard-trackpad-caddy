@@ -22,15 +22,16 @@ STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; // Extends into struts
 STRUT_CROSSBRACE_OFFSET = 20;
 CLIP_SIZE = 2;
 DOVETAIL_OFFSET = (TRACKPAD.y + STRUT.y) / 2;
+DOVETAIL_SPREAD = 0;
 
 /* [Hidden] */
 
 $fn = 72;
 
 // Main
-translate([0, DOVETAIL_OFFSET, 0])
-partition([TRACKPAD.x, TRACKPAD.y + STRUT.y, STRUT_TINE_REAR.z + STRUT.z], spread = 20, cutpath = "flat")
-translate([0, -DOVETAIL_OFFSET, 0])
+// translate([0, DOVETAIL_OFFSET, 0])
+// partition([TRACKPAD.x, TRACKPAD.y + STRUT.y, STRUT_TINE_REAR.z + STRUT.z], spread = DOVETAIL_SPREAD, cutpath = "flat")
+// translate([0, -DOVETAIL_OFFSET, 0])
 frame()
     position(BACK+BOT) struts(anchor = FWD+BOT);
 
@@ -81,23 +82,46 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
                 cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
                     // Near tine
                     align(TOP,BACK) fwd(STRUT_BATTERY_CHANNEL_WIDTH)
-                        cuboid(STRUT_TINE_FRONT, rounding=STRUT_ROUNDING, except=BOT);
-                    // Far rear tine
-                    align(TOP,BACK) 
-                        cuboid(STRUT_TINE_REAR, rounding=STRUT_ROUNDING, except=[BOT,FRONT])
-                        // Rear keyboard clips
-                        align(FRONT,TOP)
-                        #cuboid([STRUT.x,CLIP_SIZE,CLIP_SIZE], except=[BACK], rounding=STRUT_ROUNDING);
-                    }
-                    // Split strut in order to create two pieces which will dovetail
-                    // Negative Dovetail
-                    // Positive Dovetail
-                    
+                    cuboid(STRUT_TINE_FRONT, rounding=STRUT_ROUNDING, except=BOT);
+
+                    rear_tine_and_clip();
+                    // // Far rear tine + clip
+                    // // align(TOP,BACK) 
+                    // union() {
+                    //     // tag("rear_piece")
+                    //     cuboid(STRUT_TINE_REAR, rounding=STRUT_ROUNDING, except=[BOT,FRONT])
+
+                    //     // Rear keyboard clips (sibling, not child)
+                    //     // tag("rear_piece")
+                    //     align(TOP+FRONT)
+                    //     // fwd(STRUT_BATTERY_CHANNEL_WIDTH - 5)
+                    //     cuboid([STRUT.x,CLIP_SIZE,CLIP_SIZE], except=[BACK], rounding=STRUT_ROUNDING);
+                    // }
                 }
-                // Crossbrace between the two struts.        
-                position(BOT) back(STRUT_CROSSBRACE_OFFSET)
-                    cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
+
+                // Split strut in order to create two pieces which will dovetail
+                // Negative Dovetail
+                // Positive Dovetail
+                    
+            }
+            // Crossbrace between the two struts.        
+            position(BOT) back(STRUT_CROSSBRACE_OFFSET)
+                cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
         }
         children();
     }
+}
+
+module rear_tine_and_clip(anchor = CENTER, spin = 0, orient = UP) {
+    // attachable(anchor, spin, orient, size = [STRUT_TINE_REAR.x, STRUT_TINE_REAR.y + CLIP_SIZE, STRUT_TINE_REAR.z]) {
+        // Far rear tine + clip
+        align(TOP,BACK)
+        cuboid(STRUT_TINE_REAR, rounding=STRUT_ROUNDING, except=[BOT,FRONT])
+
+            // Rear keyboard clips (sibling, not child)
+            // tag("rear_piece")
+            position(TOP+FRONT)
+            cuboid([STRUT.x,CLIP_SIZE,CLIP_SIZE], except=[BACK], rounding=STRUT_ROUNDING, anchor=BACK+TOP);
+    // }
+    // children();
 }
