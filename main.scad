@@ -95,7 +95,7 @@ module frame(anchor = CENTER, spin=0, orient=UP) {
                 // 2. Continuous reinforcement band attached to frame walls at bottom
                 position(BOT)
                 rect_tube(size=[TRACKPAD.x - 2*TRACKPAD_WALL_THICKNESS, TRACKPAD.y - 2*TRACKPAD_WALL_THICKNESS],
-                          h=FOOTPAD_SUPPORT.z, wall=4, rounding=6, irounding=4, anchor=BOT);
+                          h=FOOTPAD_SUPPORT.z, wall=20, rounding=6, irounding=4, anchor=BOT);
                 // 3. Trackpad Power Switch Port    
                 position(BACK+RIGHT+TOP) move([1, 1, 0]) tag("remove")
                     rounded_prism(rect([TRACKPAD_POWER_SWITCH_PORT.x, TRACKPAD_POWER_SWITCH_PORT.y]), height = TRACKPAD_POWER_SWITCH_PORT.z,
