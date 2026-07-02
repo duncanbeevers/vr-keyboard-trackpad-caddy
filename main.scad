@@ -92,13 +92,10 @@ module frame(anchor = CENTER, spin=0, orient=UP) {
                 // 1. Trackpad Frame
                 rect_tube(size=[TRACKPAD.x, TRACKPAD.y], h=TRACKPAD.z, wall=TRACKPAD_WALL_THICKNESS, rounding=TRACKPAD_CORNER_RADIUS, anchor = CENTER);
 
-                // 2. Corner Supports
-                grid_copies(n = [2,2], spacing = [TRACKPAD.x - FOOTPAD_SUPPORT.x, TRACKPAD.y - FOOTPAD_SUPPORT.y]) {
-                    position(BOT)
-                    cuboid(FOOTPAD_SUPPORT, rounding = PORT_ROUNDING_RADIUS, edges = "Z", anchor = BOT)
-                        edge_mask([$col * 2 - 1, $row * 2 - 1, 0])
-                            rounding_edge_mask(l=$parent_size.z+0.01, r=TRACKPAD_CORNER_RADIUS);      
-                }
+                // 2. Continuous reinforcement band attached to frame walls at bottom
+                position(BOT)
+                rect_tube(size=[TRACKPAD.x - 2*TRACKPAD_WALL_THICKNESS, TRACKPAD.y - 2*TRACKPAD_WALL_THICKNESS],
+                          h=FOOTPAD_SUPPORT.z, wall=4, rounding=6, irounding=4, anchor=BOT);
                 // 3. Trackpad Power Switch Port    
                 position(BACK+RIGHT+TOP) move([1, 1, 0]) tag("remove")
                     rounded_prism(rect([TRACKPAD_POWER_SWITCH_PORT.x, TRACKPAD_POWER_SWITCH_PORT.y]), height = TRACKPAD_POWER_SWITCH_PORT.z,
