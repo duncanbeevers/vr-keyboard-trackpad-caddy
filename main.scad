@@ -7,7 +7,7 @@ TRACKPAD = [160 + TRACKPAD_WALL_THICKNESS * 2, 115 + TRACKPAD_WALL_THICKNESS * 2
 TRACKPAD_CORNER_RADIUS = 10;
 TRACKPAD_FRAME_FRONT_HEIGHT = 5;
 TRACKPAD_CHARGING_PORT = [12, TRACKPAD_WALL_THICKNESS, 6.8];
-TRACKPAD_POWER_SWITCH_PORT = [21, 8, TRACKPAD.z / 1.5];
+TRACKPAD_POWER_SWITCH_PORT = [21, 4, TRACKPAD.z / 1.5];
 TRACKPAD_OUTER_ROUNDING = 6;
 TRACKPAD_INNER_ROUNDING = 4;
 FOOTPAD_SUPPORT = [15, 15, 2];
@@ -23,6 +23,7 @@ STRUT_SEPARATION = 70;
 STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; 
 STRUT_CROSSBRACE_OFFSET = 20;
 CLIP_SIZE = 2;
+SKID_RUNNER = [STRUT.x, TRACKPAD.y + 10, STRUT.z];
 
 /* [Dovetail settings] */
 DOVETAIL_WIDTH = STRUT.x / 1.6;  // Total width of the dovetail joint
@@ -123,9 +124,6 @@ module frame(anchor = CENTER, spin=0, orient=UP) {
                 down(0.01)
                 wedge(TRACKPAD+[0.1,0.1,-TRACKPAD_FRAME_FRONT_HEIGHT], anchor = BOT);
             }
-            // Front bearing shelf for strut support
-            position(FWD+BOT)
-            cuboid([STRUT_SEPARATION + STRUT.x, 8, STRUT.z + 2], rounding=1, edges="Y", anchor=BOT+FWD);
         }
         children();
     }
@@ -136,16 +134,30 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
     attachable(anchor, spin, orient, size = [STRUT_SEPARATION + 1 * STRUT.x, STRUT.y, STRUT.z]){
         union() {
             xcopies(n = 2, spacing = STRUT_SEPARATION) {
-                cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
-                    rear_tine_and_clip();
-                    // Forward skid runner extending to front of trackpad frame (sits below strut)
+                diff() {
+                    cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
+                        rear_tine_and_clip();
+                        // Forward skid runner extending to front of trackpad frame (sits below strut)
+                        position(FWD+BOT)
+                        move([0, -TRACKPAD.y, FOOTPAD_SUPPORT.z])
+                        cuboid(
+                            SKID_RUNNER,
+                            rounding=STRUT_ROUNDING,
+                            edges=[FWD, BOTTOM],
+                            anchor=FRONT+TOP
+                        );
+                    }
+
+                    tag("remove")
                     position(FWD+BOT)
-                    cuboid([STRUT.x, TRACKPAD.y, 2], rounding=STRUT_ROUNDING, except=[BACK, TOP], anchor=BACK+BOT);
+                    wedge([SKID_RUNNER.x + 0.1, TRACKPAD.y + 0.1, SKID_RUNNER.z - FOOTPAD_SUPPORT.z + 0.1], anchor = TOP+BACK);
                 }
             }
+
             // Crossbrace between the two struts.        
             position(BOT) back(STRUT_CROSSBRACE_OFFSET)
                 cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
+
             // Crossbrace connecting the two rear tines
             position(BACK+TOP)
                 cuboid([STRUT_SEPARATION - STRUT.x, STRUT_TINE_DEPTH, STRUT_TINE_REAR.z],
