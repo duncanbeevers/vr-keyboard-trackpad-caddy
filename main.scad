@@ -14,15 +14,22 @@ FOOTPAD_SUPPORT = [15, 15, 2];
 PORT_ROUNDING_RADIUS = 2;
 
 /* [Keyboard Strut settings] */
-STRUT_TINE_DEPTH = 5;
-STRUT = [20, 130 + STRUT_TINE_DEPTH, 4];
-STRUT_TINE_REAR = [STRUT.x, STRUT_TINE_DEPTH, 21]; 
+STRUT_TINE_DEPTH = 10;
+STRUT = [20, 130 + STRUT_TINE_DEPTH, 7];
+STRUT_TINE_REAR = [STRUT.x, STRUT_TINE_DEPTH, 8]; 
 STRUT_ROUNDING = 1;
 STRUT_BATTERY_CHANNEL_WIDTH = 25;
 STRUT_SEPARATION = 70;
 STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; 
 STRUT_CROSSBRACE_OFFSET = 20;
 CLIP_SIZE = 2;
+
+/* [Dovetail settings] */
+DOVETAIL_WIDTH = STRUT.x / 1.6;  // Total width of the dovetail joint
+DOVETAIL_LENGTH = 5;  // How far the dovetail neck extends along the Y-axis
+DOVETAIL_ANGLE = 20;  // Locking flare angle
+DOVETAIL_TAPER = 5;
+DOVETAIL_Z = -TRACKPAD.z / 2;  // Keep dovetails anchored to the bottom of the struts.
 
 /* [Hidden] */
 $fn = 72;
@@ -32,7 +39,7 @@ $slop = 0.05; // 3D printing tolerance gap handled natively by BOSL2 joiners
 Y_CUT_PLANE = (TRACKPAD.y + STRUT.y) / 2;
 
 // Main Pipeline
-partition_and_dovetail(y_position = Y_CUT_PLANE, spread = 20) assembly();
+partition_and_dovetail(y_position = Y_CUT_PLANE, spread = DOVETAIL_LENGTH + 5) assembly();
 
 module assembly() {
     frame() position(BACK+BOT) struts(anchor = FWD+BOT);
@@ -40,46 +47,31 @@ module assembly() {
 
 // Partitioning module using bounding box masking to isolate halves
 module partition_and_dovetail(y_position, spread) {
-    /* [Local Dovetail settings] */
-    DOVETAIL_WIDTH = STRUT.x / 1.6;  // Total width of the dovetail joint
-    DOVETAIL_LENGTH = 5;  // How far the dovetail neck extends along the Y-axis
-    DOVETAIL_ANGLE = 20;  // Locking flare angle
-    DOVETAIL_TAPER = 5;
-    DOVETAIL_Z = -TRACKPAD.z / 2;  // Keep dovetails anchored to the bottom of the struts.
-    // DOVETAIL_Z = 0;
-
-    if (spread == 0) {
+    // 1. FRONT HALF ASSEMBLY (Trackpad frame)
+    intersection() {
         children();
-    } else {
-        // 1. FRONT HALF ASSEMBLY (Moves Forward)
-        translate([0, -spread/2, 0]) {
-            union() {
-                intersection() {
-                    children();
-                    translate([0, y_position - 500, 0]) cube([1000, 1000, 1000], center=true);
-                }
-                // Fuse solid male tabs directly onto the cut face of each strut (+Y direction)
-                xcopies(spacing = STRUT_SEPARATION, n = 2)
-                    translate([0, y_position, DOVETAIL_Z])
-                        xrot(-90)
-                            dovetail(gender="male", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK);
+        translate([0, y_position - 500, 0]) cube([1000, 1000, 1000], center=true);
+    }
+
+    // Fuse solid male tabs directly onto the cut face of each strut (+Y direction)
+    xcopies(spacing = STRUT_SEPARATION, n = 2)
+        translate([0, y_position, DOVETAIL_Z])
+            xrot(-90)
+                dovetail(gender="male", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK);
+
+    // 2. BACK HALF ASSEMBLY (Moves Backward)
+    translate([0, spread, 0]) {
+        difference() {
+            intersection() {
+                children();
+                translate([0, y_position + 500, 0]) cube([1000, 1000, 1000], center=true);
             }
-        }
-        
-        // 2. BACK HALF ASSEMBLY (Moves Backward)
-        translate([0, spread/2, 0]) {
-            difference() {
-                intersection() {
-                    children();
-                    translate([0, y_position + 500, 0]) cube([1000, 1000, 1000], center=true);
-                }
-                // yrot(180) corrects the internal female tracking direction to run upward (+Z)
-                xcopies(spacing = STRUT_SEPARATION, n = 2)
-                    translate([0, y_position, DOVETAIL_Z])
-                        yrot(180) xrot(90)
-                            // Slide thickness gets a tiny over-height modifier (+0.1) for a clean face through-cut
-                            dovetail(gender="female", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z + 0.1, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK, $slop=$slop);
-            }
+            // yrot(180) corrects the internal female tracking direction to run upward (+Z)
+            xcopies(spacing = STRUT_SEPARATION, n = 2)
+                translate([0, y_position, DOVETAIL_Z])
+                    yrot(180) xrot(90)
+                        // Slide thickness gets a tiny over-height modifier (+0.1) for a clean face through-cut
+                        dovetail(gender="female", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z + 0.1, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK, $slop=$slop);
         }
     }
 }
@@ -106,14 +98,17 @@ module frame(anchor = CENTER, spin=0, orient=UP) {
                     back(0.1)
                     cuboid(TRACKPAD_CHARGING_PORT + [0, 0.2, 0], rounding = PORT_ROUNDING_RADIUS, edges = "Y", anchor = BACK);
 
-                // 5.  Profiling Wedge
+                // 5. Rear wall reinforcement for tine engagement
+                position(BACK+BOT)
+                cuboid([TRACKPAD.x, 4, TRACKPAD.z + 2], rounding=1, edges="Y", anchor=BOT+BACK);
+                // 6.  Profiling Wedge
                 position(TOP) yrot(180) tag("remove")
                 down(0.01)
                 wedge(TRACKPAD+[0.1,0.1,-TRACKPAD_FRAME_FRONT_HEIGHT], anchor = BOT);
             }
-            // Front keyboard clip
-            position(BACK+TOP)
-            xcyl(STRUT.x, d = CLIP_SIZE, rounding = CLIP_SIZE / 2, anchor = TOP);
+            // Front bearing shelf for strut support
+            position(FWD+BOT)
+            cuboid([STRUT_SEPARATION + STRUT.x, 8, STRUT.z + 2], rounding=1, edges="Y", anchor=BOT+FWD);
         }
         children();
     }
@@ -126,11 +121,18 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
             xcopies(n = 2, spacing = STRUT_SEPARATION) {
                 cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
                     rear_tine_and_clip();
+                    // Forward skid runner extending to front of trackpad frame (sits below strut)
+                    position(FWD+BOT)
+                    cuboid([STRUT.x, TRACKPAD.y, 2], rounding=STRUT_ROUNDING, except=[BACK, TOP], anchor=BACK+BOT);
                 }
             }
             // Crossbrace between the two struts.        
             position(BOT) back(STRUT_CROSSBRACE_OFFSET)
                 cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
+            // Crossbrace connecting the two rear tines
+            position(BACK+TOP)
+                cuboid([STRUT_SEPARATION - STRUT.x, STRUT_TINE_DEPTH, STRUT_TINE_REAR.z],
+                       rounding=STRUT_ROUNDING, except=[LEFT,RIGHT,BOT], anchor=BACK+TOP);
         }
         children();
     }
