@@ -3,7 +3,7 @@ include <BOSL2/joiners.scad>
 
 /* [Trackpad Settings] */
 TRACKPAD_WALL_THICKNESS = 3;
-TRACKPAD = [160 + TRACKPAD_WALL_THICKNESS * 2, 115 + TRACKPAD_WALL_THICKNESS * 2, 12];
+TRACKPAD = [160.5 + TRACKPAD_WALL_THICKNESS * 2, 115.5 + TRACKPAD_WALL_THICKNESS * 2, 12];
 TRACKPAD_CORNER_RADIUS = 10;
 TRACKPAD_FRAME_FRONT_HEIGHT = 5;
 TRACKPAD_CHARGING_PORT = [12, TRACKPAD_WALL_THICKNESS, 6.8];
@@ -14,16 +14,18 @@ FOOTPAD_SUPPORT = [15, 15, 2];
 PORT_ROUNDING_RADIUS = 2;
 
 /* [Keyboard Strut settings] */
-STRUT_TINE_DEPTH = 10;
-STRUT = [20, 130 + STRUT_TINE_DEPTH, 7];
-STRUT_TINE_REAR = [STRUT.x, STRUT_TINE_DEPTH, 8]; 
+STRUT_TINE_DEPTH = 5;
+STRUT = [20, 130 + STRUT_TINE_DEPTH, 5];
+STRUT_TINE_REAR = [STRUT.x, STRUT_TINE_DEPTH, 15]; 
 STRUT_ROUNDING = 1;
 STRUT_BATTERY_CHANNEL_WIDTH = 25;
 STRUT_SEPARATION = 70;
 STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; 
 STRUT_CROSSBRACE_OFFSET = 20;
-CLIP_SIZE = 2;
-SKID_RUNNER = [STRUT.x, TRACKPAD.y + 10, STRUT.z];
+CLIP_SIZE = 3;
+SKID_OVERLAP = 10;
+SKID_RUNNER = [STRUT.x, TRACKPAD.y + SKID_OVERLAP, STRUT.z];
+BUTTRESS_WEDGE = [SKID_RUNNER.x - STRUT_ROUNDING * 2, 40, SKID_RUNNER.z - FOOTPAD_SUPPORT.z];
 
 /* [Dovetail settings] */
 DOVETAIL_WIDTH = STRUT.x / 1.6;  // Total width of the dovetail joint
@@ -143,7 +145,7 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
                         cuboid(
                             SKID_RUNNER,
                             rounding=STRUT_ROUNDING,
-                            edges=[FWD, BOTTOM],
+                            edges=[BOTTOM+LEFT, BOTTOM+RIGHT, BACK+LEFT, BACK+RIGHT],
                             anchor=FRONT+TOP
                         );
                     }
@@ -151,6 +153,11 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
                     tag("remove")
                     position(FWD+BOT)
                     wedge([SKID_RUNNER.x + 0.1, TRACKPAD.y + 0.1, SKID_RUNNER.z - FOOTPAD_SUPPORT.z + 0.1], anchor = TOP+BACK);
+
+                    position(FWD+BOT)
+                    yrot(180)
+                    move([0, SKID_OVERLAP, 0])
+                    wedge(BUTTRESS_WEDGE, anchor=BOTTOM+FRONT);
                 }
             }
 
@@ -159,9 +166,9 @@ module struts(anchor = CENTER, spin=0, orient=UP) {
                 cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
 
             // Crossbrace connecting the two rear tines
-            position(BACK+TOP)
-                cuboid([STRUT_SEPARATION - STRUT.x, STRUT_TINE_DEPTH, STRUT_TINE_REAR.z],
-                       rounding=STRUT_ROUNDING, except=[LEFT,RIGHT,BOT], anchor=BACK+TOP);
+            position(BACK+BOT)
+                cuboid(STRUT_CROSSBRACE,
+                       rounding=STRUT_ROUNDING, except=[LEFT,RIGHT], anchor=BACK+BOT);
         }
         children();
     }
