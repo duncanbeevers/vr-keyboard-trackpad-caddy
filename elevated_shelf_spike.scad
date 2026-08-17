@@ -1,20 +1,18 @@
 include <BOSL2/std.scad>
-include <BOSL2/joiners.scad>
 
 /* 
  * Elevated Magic Trackpad Shelf & MX Keys Mini Lap Cradle
- * Optimized for Prusa Mini (180 x 180 x 180 mm) Print Bed & Heavy-Duty One-Handed Lifting
+ * Monolithic Design Optimized for Prusa Mini (180 x 180 x 180 mm) Print Bed & Heavy-Duty One-Handed Lifting
  *
  * Render commands:
  * openscad -o spike_iso.png --imgsize=1200,900 --projection=p --camera=-35,-75,45,60,0,32,620 elevated_shelf_spike.scad
  * openscad -o spike_tilted_mini.png --imgsize=1200,900 --projection=p --camera=20,-20,80,45,0,35,420 -D 'MODE="single_piece_diagonal"' -D 'SHOW_BED_BOUNDS=true' elevated_shelf_spike.scad
- * openscad -o spike_exploded.png --imgsize=1200,900 --projection=p --camera=-45,-80,50,60,0,35,650 -D 'MODE="exploded"' elevated_shelf_spike.scad
- * openscad -o spike_plate_cradle.png --imgsize=1200,900 --projection=p --camera=0,-10,40,45,0,0,350 -D 'MODE="print_plate_cradle"' -D 'SHOW_BED_BOUNDS=true' elevated_shelf_spike.scad
- * openscad -o spike_plate_shelf.png --imgsize=1200,900 --projection=p --camera=0,10,40,45,0,0,350 -D 'MODE="print_plate_shelf"' -D 'SHOW_BED_BOUNDS=true' elevated_shelf_spike.scad
+ * openscad -o spike_side.png --imgsize=1200,900 --projection=o --camera=0,30,20,90,0,-90,450 elevated_shelf_spike.scad
+ * openscad -o spike_tray_top.png --imgsize=1200,900 --projection=p --camera=40,54,57,60,0,40,230 elevated_shelf_spike.scad
  */
 
 /* [Display Mode] */
-MODE = "assembled"; // [assembled:Full Unified Monolithic Assembly (No Dovetails), single_piece_diagonal:Tilted 3D Monolithic Single Piece (No Dovetails), print_plate_cradle:Prusa Mini Plate 1 (Keyboard Cradle with Dovetails), print_plate_shelf:Prusa Mini Plate 2 (Elevated Shelf with Dovetails), exploded:Exploded Assembly with Dovetail Joints]
+MODE = "assembled"; // [assembled:Full Monolithic Assembly, single_piece_diagonal:Tilted 3D Monolithic Print (Fits Prusa Mini 180x180x180mm), cradle_only:Keyboard Cradle Only, shelf_only:Elevated Shelf Only]
 
 /* [Prusa Mini Build Volume Check] */
 SHOW_BED_BOUNDS = false;        // Show translucent 180x180x180mm Prusa Mini build volume
@@ -68,48 +66,28 @@ REAR_JAW_HEIGHT = KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS;
 RISER_THICKNESS = 10.0;         // Substantially thickened riser arms for zero flex
 CROSSBRACE_WIDTH = 20.0;
 
-/* [Heavy-Duty Dovetail Joint & Lock Settings (For Modular 2-Part Mode Only)] */
-DOVETAIL_W = 14.0;
-DOVETAIL_H = 5.5;
-DOVETAIL_SLIDE = REAR_JAW_HEIGHT - RUNNER_THICKNESS;
-DOVETAIL_ANG = 20.0;
-DOVETAIL_TAP = 0.0;             // Parallel slide for smooth vertical insertion
-LOCK_PIN_DIA = 3.2;             // 3.2mm cross-pin / M3 screw locking hole for permanent zero-flex joint
-EXPLODE_SPREAD_Z = 40.0;
-
 /* [Tolerances & Quality] */
 $fn = 72;
-$slop = 0.08;
-
-// Joint center coordinates
-rear_y = KB_DEPTH / 2;
-joint_center_y = rear_y + (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2;
 
 // ==========================================
 // Top-Level Scene Selection
 // ==========================================
 if (MODE == "assembled") {
-    // 100% Monolithic solid body (No joints, no seams)
-    monolithic_unified_assembly();
+    // 100% Monolithic solid body (Continuous, no joints, max strength)
+    monolithic_assembly();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "single_piece_diagonal") {
-    // 100% Monolithic single-piece print tilted along 3D space diagonal to fit within 180x180x180mm volume
+    // Monolithic print tilted diagonally to fit within 180x180x180mm Prusa Mini volume
     translate([0, 0, BED_Z / 2])
         zrot(45)
             xrot(-35)
-                monolithic_unified_assembly();
+                monolithic_assembly();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
-} else if (MODE == "print_plate_cradle") {
-    // Modular Part 1: Oriented flat on Prusa Mini bed (Bounding box: ~140 x 153 mm)
-    keyboard_lap_cradle_modular();
+} else if (MODE == "cradle_only") {
+    keyboard_lap_cradle();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
-} else if (MODE == "print_plate_shelf") {
-    // Modular Part 2: Oriented flat on Prusa Mini bed (Bounding box: ~167.5 x 122.5 mm)
-    trackpad_shelf_modular_printable();
-    if (SHOW_BED_BOUNDS) prusa_mini_bounds();
-} else if (MODE == "exploded") {
-    // Exploded View of Modular 2-Part Assembly along vertical assembly axis (Z)
-    partitioned_dovetail_assembly(lift_z = EXPLODE_SPREAD_Z);
+} else if (MODE == "shelf_only") {
+    trackpad_shelf_assembly();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 }
 
@@ -119,92 +97,19 @@ module prusa_mini_bounds() {
 }
 
 // ==========================================
-// 1. Monolithic Unified Assembly (Single Piece - No Dovetails)
+// Monolithic Unified Assembly (Single Piece)
 // ==========================================
-module monolithic_unified_assembly() {
+module monolithic_assembly() {
     union() {
-        keyboard_lap_cradle_base();
-        trackpad_shelf_solid_body();
+        keyboard_lap_cradle();
+        trackpad_shelf_assembly();
     }
 }
 
 // ==========================================
-// 2. Modular 2-Part System with Heavy-Duty Dovetail Joint
+// Module: Seamless Keyboard Lap Base Skeleton
 // ==========================================
-module partitioned_dovetail_assembly(lift_z = 40) {
-    // Lower cradle fixed on baseplate
-    keyboard_lap_cradle_modular();
-
-    // Upper shelf lifted vertically along the sliding dovetail insertion axis
-    translate([0, 0, lift_z])
-        trackpad_shelf_modular();
-}
-
-// Modular Lower Cradle (with female dovetail mortise cut down from top of battery jaw)
-module keyboard_lap_cradle_modular() {
-    difference() {
-        keyboard_lap_cradle_base();
-
-        // Vertical sliding female dovetail mortises in the rear battery jaw wall
-        xcopies(spacing = STRUT_SPACING, n = 2) {
-            translate([0, joint_center_y, RUNNER_THICKNESS - 0.1])
-                dovetail(
-                    gender = "female",
-                    w = DOVETAIL_W,
-                    h = DOVETAIL_H,
-                    slide = DOVETAIL_SLIDE + 0.2,
-                    angle = DOVETAIL_ANG,
-                    taper = DOVETAIL_TAP,
-                    anchor = BOTTOM,
-                    $slop = $slop
-                );
-
-            // Transverse locking pin hole (for 3mm filament rivet or M3 bolt)
-            translate([0, joint_center_y, RUNNER_THICKNESS + DOVETAIL_SLIDE / 2])
-                yrot(90)
-                    cyl(d = LOCK_PIN_DIA, h = RUNNER_WIDTH + 4, anchor = CENTER);
-        }
-    }
-}
-
-// Modular Upper Shelf (with male dovetail tenon fused solidly to the riser roots)
-module trackpad_shelf_modular() {
-    union() {
-        trackpad_shelf_solid_body();
-
-        // Male dovetail tenons extending downward from the riser roots to slide into the cradle
-        xcopies(spacing = STRUT_SPACING, n = 2) {
-            difference() {
-                translate([0, joint_center_y, RUNNER_THICKNESS])
-                    dovetail(
-                        gender = "male",
-                        w = DOVETAIL_W,
-                        h = DOVETAIL_H,
-                        slide = DOVETAIL_SLIDE,
-                        angle = DOVETAIL_ANG,
-                        taper = DOVETAIL_TAP,
-                        anchor = BOTTOM
-                    );
-
-                // Matching transverse locking pin hole
-                translate([0, joint_center_y, RUNNER_THICKNESS + DOVETAIL_SLIDE / 2])
-                    yrot(90)
-                        cyl(d = LOCK_PIN_DIA, h = RUNNER_WIDTH + 4, anchor = CENTER);
-            }
-        }
-    }
-}
-
-module trackpad_shelf_modular_printable() {
-    rear_y = KB_DEPTH / 2;
-    translate([0, -rear_y - SHELF_SETBACK_Y, 0])
-        trackpad_shelf_modular();
-}
-
-// ==========================================
-// Core Solid Sub-Assemblies
-// ==========================================
-module keyboard_lap_cradle_base() {
+module keyboard_lap_cradle() {
     front_y = -KB_DEPTH / 2;
     rear_y = KB_DEPTH / 2;
 
@@ -276,11 +181,14 @@ module rear_battery_jaw() {
     }
 }
 
-module trackpad_shelf_solid_body() {
+// ==========================================
+// Module: Elevated Trackpad Shelf & Integrated Riser
+// ==========================================
+module trackpad_shelf_assembly() {
     rear_y = KB_DEPTH / 2;
 
     union() {
-        // Riser Struts with continuous solid crossbrace
+        // Integrated Monolithic Cantilever Riser Struts
         riser_struts();
 
         // Elevated Trackpad Tray positioned above & behind function keys
