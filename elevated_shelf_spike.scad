@@ -69,19 +69,19 @@ RISER_THICKNESS = 10.0;         // Substantially thickened riser arms for zero f
 CROSSBRACE_WIDTH = 20.0;
 
 /* [Heavy-Duty Dovetail Joint & Lock Settings (For Modular 2-Part Mode Only)] */
-DOVETAIL_W = 16.0;
-DOVETAIL_H = 6.0;
-DOVETAIL_SLIDE = REAR_JAW_HEIGHT - RUNNER_THICKNESS + 0.2;
+DOVETAIL_W = 14.0;
+DOVETAIL_H = 5.5;
+DOVETAIL_SLIDE = REAR_JAW_HEIGHT - RUNNER_THICKNESS;
 DOVETAIL_ANG = 20.0;
 DOVETAIL_TAP = 0.0;             // Parallel slide for smooth vertical insertion
 LOCK_PIN_DIA = 3.2;             // 3.2mm cross-pin / M3 screw locking hole for permanent zero-flex joint
-EXPLODE_SPREAD = 45.0;
+EXPLODE_SPREAD_Z = 40.0;
 
 /* [Tolerances & Quality] */
 $fn = 72;
 $slop = 0.08;
 
-// Global joint coordinates
+// Joint center coordinates
 rear_y = KB_DEPTH / 2;
 joint_center_y = rear_y + (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2;
 
@@ -108,8 +108,8 @@ if (MODE == "assembled") {
     trackpad_shelf_modular_printable();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "exploded") {
-    // Exploded View of Modular 2-Part Assembly
-    partitioned_dovetail_assembly(spread = EXPLODE_SPREAD);
+    // Exploded View of Modular 2-Part Assembly along vertical assembly axis (Z)
+    partitioned_dovetail_assembly(lift_z = EXPLODE_SPREAD_Z);
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 }
 
@@ -131,19 +131,21 @@ module monolithic_unified_assembly() {
 // ==========================================
 // 2. Modular 2-Part System with Heavy-Duty Dovetail Joint
 // ==========================================
-module partitioned_dovetail_assembly(spread = 45) {
+module partitioned_dovetail_assembly(lift_z = 40) {
+    // Lower cradle fixed on baseplate
     keyboard_lap_cradle_modular();
 
-    translate([0, spread, spread * 0.4])
+    // Upper shelf lifted vertically along the sliding dovetail insertion axis
+    translate([0, 0, lift_z])
         trackpad_shelf_modular();
 }
 
-// Modular Lower Cradle (with female dovetail mortise)
+// Modular Lower Cradle (with female dovetail mortise cut down from top of battery jaw)
 module keyboard_lap_cradle_modular() {
     difference() {
         keyboard_lap_cradle_base();
 
-        // Vertical sliding female dovetail slots in the rear battery jaw wall
+        // Vertical sliding female dovetail mortises in the rear battery jaw wall
         xcopies(spacing = STRUT_SPACING, n = 2) {
             translate([0, joint_center_y, RUNNER_THICKNESS - 0.1])
                 dovetail(
@@ -165,12 +167,12 @@ module keyboard_lap_cradle_modular() {
     }
 }
 
-// Modular Upper Shelf (with male dovetail tenon)
+// Modular Upper Shelf (with male dovetail tenon fused solidly to the riser roots)
 module trackpad_shelf_modular() {
     union() {
         trackpad_shelf_solid_body();
 
-        // Male dovetail tenons extending downward from the riser roots
+        // Male dovetail tenons extending downward from the riser roots to slide into the cradle
         xcopies(spacing = STRUT_SPACING, n = 2) {
             difference() {
                 translate([0, joint_center_y, RUNNER_THICKNESS])
