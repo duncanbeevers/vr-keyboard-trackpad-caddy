@@ -34,11 +34,11 @@ TP_WIDTH = 160.5;
 TP_DEPTH = 115.5;
 TP_FRONT_H = 5.0;
 TP_REAR_H = 11.5;
-TP_CORNER_R = 9.0;
+TP_CORNER_R = 8.0;
 TP_PORT_WIDTH = 14.0;
 TP_PORT_HEIGHT = 7.5;
-TP_SWITCH_WIDTH = 24.0;         // Clean, wide power switch access cutout
-TP_SWITCH_HEIGHT = 12.0;
+TP_SWITCH_WIDTH = 14.0;         // Clean power switch access cutout matching Magic Trackpad switch
+TP_SWITCH_HEIGHT = 10.0;
 
 /* [Elevated Shelf Geometry] */
 SHELF_ELEVATION_Z = 36.0;       // Vertical rise of trackpad shelf above keyboard battery bar
@@ -235,17 +235,17 @@ module trackpad_tray() {
     outer_d = TP_DEPTH + TP_WALL_THICKNESS * 2;
     tray_h = TP_REAR_H + SHELF_FLOOR_THICKNESS;
 
-    switch_center_x = TP_WIDTH / 2 - TP_SWITCH_WIDTH / 2 - 4;
-    switch_r = 4.0; // Fillet radius for the waterfall round-over
+    // Switch positioned along straight section of rear rim
+    switch_center_x = TP_WIDTH / 2 - TP_CORNER_R - TP_SWITCH_WIDTH / 2 - 2;
 
     diff() {
-        // 1. Main outer tray solid with uniform rounding
-        cuboid([outer_w, outer_d, tray_h], rounding = TP_CORNER_R, except = [BOT], anchor = BOT);
+        // 1. Main outer tray solid with rounded vertical corners
+        cuboid([outer_w, outer_d, tray_h], rounding = TP_CORNER_R + TP_WALL_THICKNESS, edges = "Z", anchor = BOT);
 
-        // 2. Trackpad Recessed Cavity (matches Magic Trackpad wedge profile)
+        // 2. Trackpad Recessed Cavity: Flat bottom with crisp 90° edges and rounded vertical corners (edges = "Z")
         tag("remove")
             translate([0, 0, SHELF_FLOOR_THICKNESS])
-                cuboid([TP_WIDTH, TP_DEPTH, tray_h + 2], rounding = TP_CORNER_R - 2, anchor = BOT);
+                cuboid([TP_WIDTH, TP_DEPTH, tray_h + 2], rounding = TP_CORNER_R, edges = "Z", anchor = BOT);
 
         // 3. Low-profile Front Edge Scoop (comfortable for thumbs/palms)
         tag("remove")
@@ -257,38 +257,12 @@ module trackpad_tray() {
             translate([0, outer_d / 2, SHELF_FLOOR_THICKNESS + TP_PORT_HEIGHT / 2 + 1])
                 cuboid([TP_PORT_WIDTH, TP_WALL_THICKNESS * 2 + 2, TP_PORT_HEIGHT], rounding = CORNER_R, edges = "Y", anchor = CENTER);
 
-        // 5. Ergonomic Power Switch Cutout with Smooth Convex Top Round-Overs
-        tag("remove") {
-            // Main rectangular clearance slot
+        // 5. Ergonomic Power Switch Cutout
+        tag("remove")
             translate([switch_center_x, outer_d / 2, SHELF_FLOOR_THICKNESS])
-                cuboid([TP_SWITCH_WIDTH, TP_WALL_THICKNESS * 2 + 6, tray_h + 2], anchor = BOT);
+                cuboid([TP_SWITCH_WIDTH, TP_WALL_THICKNESS * 2 + 4, tray_h + 2], rounding = CORNER_R, edges = "Z", anchor = BOT);
 
-            // Left top rim convex waterfall round-over
-            translate([switch_center_x - TP_SWITCH_WIDTH / 2, outer_d / 2, tray_h])
-                diff() {
-                    cuboid([switch_r, TP_WALL_THICKNESS * 2 + 6, switch_r], anchor = RIGHT+TOP);
-                    tag("remove")
-                        xrot(90)
-                            translate([-switch_r, -switch_r, 0])
-                                cyl(r = switch_r, h = TP_WALL_THICKNESS * 2 + 8, anchor = CENTER);
-                }
-
-            // Right top rim convex waterfall round-over
-            translate([switch_center_x + TP_SWITCH_WIDTH / 2, outer_d / 2, tray_h])
-                diff() {
-                    cuboid([switch_r, TP_WALL_THICKNESS * 2 + 6, switch_r], anchor = LEFT+TOP);
-                    tag("remove")
-                        xrot(90)
-                            translate([switch_r, -switch_r, 0])
-                                cyl(r = switch_r, h = TP_WALL_THICKNESS * 2 + 8, anchor = CENTER);
-                }
-        }
-
-        // 6. Underside Rubber Foot Support Pads (4 corner rests for trackpad click mechanism)
-        tag("keep")
-            trackpad_corner_support_pads();
-
-        // 7. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
+        // 6. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
         tag("remove")
             translate([0, 10, -0.5])
                 intersection() {
@@ -296,16 +270,5 @@ module trackpad_tray() {
                     translate([0, 15, 0])
                         cuboid([32, 30, SHELF_FLOOR_THICKNESS + 4], anchor = BOT);
                 }
-    }
-}
-
-module trackpad_corner_support_pads() {
-    pad_offset_x = TP_WIDTH / 2 - 14;
-    pad_offset_y = TP_DEPTH / 2 - 14;
-    xcopies(spacing = pad_offset_x * 2, n = 2) {
-        ycopies(spacing = pad_offset_y * 2, n = 2) {
-            translate([0, 0, SHELF_FLOOR_THICKNESS / 2])
-                cyl(d = 16, h = SHELF_FLOOR_THICKNESS, anchor = CENTER);
-        }
     }
 }
