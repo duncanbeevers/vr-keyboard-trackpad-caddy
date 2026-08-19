@@ -251,7 +251,7 @@ module trackpad_tray() {
         // 2. Angled planar slice: slopes the entire top rim from front (4mm wall) to rear (10.5mm wall)
         tag("remove")
             translate([0, 0, mid_h])
-                xrot(-wedge_angle)
+                xrot(wedge_angle)
                     cuboid([outer_w + 20, outer_d * 2, max_h + 10], anchor = BOT);
 
         // 3. Trackpad Recessed Cavity: Flat bottom with crisp 90° edges and rounded vertical corners (edges = "Z")
