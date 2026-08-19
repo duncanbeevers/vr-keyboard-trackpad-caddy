@@ -2,13 +2,13 @@ include <BOSL2/std.scad>
 
 /* 
  * Elevated Magic Trackpad Shelf & MX Keys Mini Lap Cradle
- * Monolithic Design Optimized for Prusa Mini (180 x 180 x 180 mm) Print Bed & Heavy-Duty One-Handed Lifting
+ * Sloped Trackpad Tray Matching Magic Trackpad Wedge Angle (Glass Proud at All Points)
  *
  * Render commands:
  * openscad -o spike_iso.png --imgsize=1200,900 --projection=p --camera=-35,-75,45,60,0,32,620 elevated_shelf_spike.scad
- * openscad -o spike_tilted_mini.png --imgsize=1200,900 --projection=p --camera=20,-20,80,45,0,35,420 -D 'MODE="single_piece_diagonal"' -D 'SHOW_BED_BOUNDS=true' elevated_shelf_spike.scad
  * openscad -o spike_side.png --imgsize=1200,900 --projection=o --camera=0,30,20,90,0,-90,450 elevated_shelf_spike.scad
  * openscad -o spike_tray_top.png --imgsize=1200,900 --projection=p --camera=40,54,57,60,0,40,230 elevated_shelf_spike.scad
+ * openscad -o spike_tilted_mini.png --imgsize=1200,900 --projection=p --camera=20,-20,80,45,0,35,420 -D 'MODE="single_piece_diagonal"' -D 'SHOW_BED_BOUNDS=true' elevated_shelf_spike.scad
  */
 
 /* [Display Mode] */
@@ -32,13 +32,14 @@ KB_BATTERY_BAR_HEIGHT = 16.0;    // Height of rear battery bar above desk
 TP_WALL_THICKNESS = 3.5;
 TP_WIDTH = 160.5;
 TP_DEPTH = 115.5;
-TP_FRONT_H = 5.0;
-TP_REAR_H = 11.5;
-TP_CORNER_R = 8.0;
+TP_FRONT_H = 5.0;               // Front edge height of Magic Trackpad wedge
+TP_REAR_H = 11.5;               // Rear edge height of Magic Trackpad wedge
+TP_CORNER_R = 8.0;              // Corner radius of Magic Trackpad
 TP_PORT_WIDTH = 14.0;
 TP_PORT_HEIGHT = 7.5;
-TP_SWITCH_WIDTH = 14.0;         // Clean power switch access cutout matching Magic Trackpad switch
+TP_SWITCH_WIDTH = 16.0;         // Power switch access cutout
 TP_SWITCH_HEIGHT = 10.0;
+LIP_RECESS = 1.0;               // Tray rim height offset below trackpad surface (glass is 1mm proud)
 
 /* [Elevated Shelf Geometry] */
 SHELF_ELEVATION_Z = 36.0;       // Vertical rise of trackpad shelf above keyboard battery bar
@@ -73,11 +74,9 @@ $fn = 72;
 // Top-Level Scene Selection
 // ==========================================
 if (MODE == "assembled") {
-    // 100% Monolithic solid body (Continuous, no joints, max strength)
     monolithic_assembly();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "single_piece_diagonal") {
-    // Monolithic print tilted diagonally to fit within 180x180x180mm Prusa Mini volume
     translate([0, 0, BED_Z / 2])
         zrot(45)
             xrot(-35)
@@ -233,20 +232,34 @@ module single_integrated_riser() {
 module trackpad_tray() {
     outer_w = TP_WIDTH + TP_WALL_THICKNESS * 2;
     outer_d = TP_DEPTH + TP_WALL_THICKNESS * 2;
-    tray_h = TP_REAR_H + SHELF_FLOOR_THICKNESS;
+
+    // Sloped tray rim heights (1.0mm lower than Magic Trackpad wedge surface at all points)
+    tray_front_h = SHELF_FLOOR_THICKNESS + TP_FRONT_H - LIP_RECESS;
+    tray_rear_h = SHELF_FLOOR_THICKNESS + TP_REAR_H - LIP_RECESS;
+    max_h = tray_rear_h + 10;
+    mid_h = (tray_front_h + tray_rear_h) / 2;
+    wedge_angle = atan((tray_rear_h - tray_front_h) / outer_d);
 
     // Power toggle position on Apple Magic Trackpad 2/3 (right of center port)
     switch_center_x = 46.0;
     switch_width = 16.0;
 
     diff() {
-        // 1. Main outer tray solid with rounded vertical corners
-        cuboid([outer_w, outer_d, tray_h], rounding = TP_CORNER_R + TP_WALL_THICKNESS, edges = "Z", anchor = BOT);
+        // 1. Outer tray solid with matching wedge slope
+        diff() {
+            cuboid([outer_w, outer_d, max_h], rounding = TP_CORNER_R + TP_WALL_THICKNESS, edges = "Z", anchor = BOT);
+
+            // Angled planar slice trimming the top rim to follow the trackpad's wedge angle
+            tag("remove")
+                translate([0, 0, mid_h])
+                    xrot(wedge_angle)
+                        cuboid([outer_w + 10, outer_d * 2, max_h], anchor = BOT);
+        }
 
         // 2. Trackpad Recessed Cavity: Flat bottom with crisp 90° edges and rounded vertical corners (edges = "Z")
         tag("remove")
             translate([0, 0, SHELF_FLOOR_THICKNESS])
-                cuboid([TP_WIDTH, TP_DEPTH, tray_h + 2], rounding = TP_CORNER_R, edges = "Z", anchor = BOT);
+                cuboid([TP_WIDTH, TP_DEPTH, max_h + 2], rounding = TP_CORNER_R, edges = "Z", anchor = BOT);
 
         // 3. Rear Charging Port Cutout (Lightning / USB-C centered)
         tag("remove")
@@ -259,7 +272,7 @@ module trackpad_tray() {
                 power_switch_smooth_notch(
                     width = switch_width,
                     floor_z = SHELF_FLOOR_THICKNESS,
-                    rim_z = tray_h,
+                    rim_z = tray_rear_h,
                     wall_thickness = TP_WALL_THICKNESS
                 );
 
