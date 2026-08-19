@@ -235,8 +235,9 @@ module trackpad_tray() {
     outer_d = TP_DEPTH + TP_WALL_THICKNESS * 2;
     tray_h = TP_REAR_H + SHELF_FLOOR_THICKNESS;
 
-    // Switch positioned along straight section of rear rim
-    switch_center_x = TP_WIDTH / 2 - TP_CORNER_R - TP_SWITCH_WIDTH / 2 - 2;
+    // Power toggle position on Apple Magic Trackpad 2/3 (right of center port)
+    switch_center_x = 46.0;
+    switch_width = 16.0;
 
     diff() {
         // 1. Main outer tray solid with rounded vertical corners
@@ -252,10 +253,15 @@ module trackpad_tray() {
             translate([0, outer_d / 2, SHELF_FLOOR_THICKNESS + TP_PORT_HEIGHT / 2 + 1])
                 cuboid([TP_PORT_WIDTH, TP_WALL_THICKNESS * 2 + 2, TP_PORT_HEIGHT], rounding = CORNER_R, edges = "Y", anchor = CENTER);
 
-        // 4. Ergonomic Power Switch Cutout
+        // 4. Ergonomic Power Switch Cutout with Rounded-Over Top Edges & Filleted Base
         tag("remove")
-            translate([switch_center_x, outer_d / 2, SHELF_FLOOR_THICKNESS])
-                cuboid([TP_SWITCH_WIDTH, TP_WALL_THICKNESS * 2 + 4, tray_h + 2], rounding = CORNER_R, edges = "Z", anchor = BOT);
+            translate([switch_center_x, outer_d / 2, 0])
+                power_switch_smooth_notch(
+                    width = switch_width,
+                    floor_z = SHELF_FLOOR_THICKNESS,
+                    rim_z = tray_h,
+                    wall_thickness = TP_WALL_THICKNESS
+                );
 
         // 5. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
         tag("remove")
@@ -265,5 +271,36 @@ module trackpad_tray() {
                     translate([0, 15, 0])
                         cuboid([32, 30, SHELF_FLOOR_THICKNESS + 4], anchor = BOT);
                 }
+    }
+}
+
+module power_switch_smooth_notch(width, floor_z, rim_z, wall_thickness) {
+    r_bot = 2.0; // Fillet radius at the base of the trough
+    r_top = 2.5; // Convex round-over radius at the top rim
+    cut_h = (rim_z - floor_z) + 4;
+    cut_d = wall_thickness * 2 + 6;
+
+    union() {
+        // 1. Main slot with rounded bottom corners (creates concave fillets at the trough base)
+        translate([0, 0, floor_z])
+            cuboid([width, cut_d, cut_h], rounding = r_bot, edges = [BOT+LEFT, BOT+RIGHT], anchor = BOT);
+
+        // 2. Left top rim convex waterfall round-over
+        translate([-width / 2, 0, rim_z])
+            xrot(90)
+                linear_extrude(cut_d, center = true)
+                    difference() {
+                        translate([-r_top, -r_top]) square([r_top, r_top]);
+                        translate([-r_top, -r_top]) circle(r = r_top);
+                    }
+
+        // 3. Right top rim convex waterfall round-over
+        translate([width / 2, 0, rim_z])
+            xrot(90)
+                linear_extrude(cut_d, center = true)
+                    difference() {
+                        translate([0, -r_top]) square([r_top, r_top]);
+                        translate([r_top, -r_top]) circle(r = r_top);
+                    }
     }
 }
