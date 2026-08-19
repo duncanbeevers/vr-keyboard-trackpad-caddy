@@ -159,11 +159,10 @@ module single_monolithic_runner() {
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Pocket angled to match the keyboard's exact 5.5° deck slope
+        // 3. Subtractive Retention Pocket: Flat floor contiguous with runner top surface
         tag("remove")
-            translate([0, front_y, RUNNER_THICKNESS])
-                xrot(KB_TILT_ANGLE)
-                    cuboid([RUNNER_WIDTH + 1, FRONT_CATCH_DEPTH + 4, FRONT_LIP_GAP], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+            translate([0, front_y, RUNNER_THICKNESS - 0.1])
+                cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 2, FRONT_LIP_GAP + 0.1], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
