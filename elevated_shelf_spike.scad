@@ -23,7 +23,7 @@ BED_Z = 180.0;
 /* [Keyboard Dimensions (Logitech MX Keys Mini)] */
 KB_WIDTH = 296.0;
 KB_DEPTH = 132.0;
-KB_FRONT_THICKNESS = 6.5;
+KB_FRONT_THICKNESS = 7.0;        // Front edge thickness of MX Keys Mini (~7mm)
 KB_REAR_THICKNESS = 20.5;
 KB_BATTERY_BAR_DEPTH = 25.0;     // Front-to-back depth of rear battery wedge
 KB_BATTERY_BAR_HEIGHT = 16.0;    // Height of rear battery bar above desk
@@ -56,8 +56,9 @@ CORNER_R = 2.0;                 // Consistent global fillet/rounding radius
 
 /* [Keyboard Retention Hardware Settings] */
 FRONT_LIP_WALL = 5.0;
-FRONT_CATCH_DEPTH = 4.0;        // Small overhang catch tab at top of front lip
-FRONT_LIP_HEIGHT = RUNNER_THICKNESS + KB_FRONT_THICKNESS + 3.0; // 14.5mm total height accommodating angled chin
+FRONT_CATCH_DEPTH = 3.0;        // Overhang catch tab depth over front bezel
+FRONT_LIP_GAP = 7.4;            // Snug 7.4mm vertical opening for 7.0mm keyboard front
+FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.0; // Low-profile total height (~14.4mm)
 
 REAR_JAW_WALL = 12.0;           // Solid, thick structural rear wall for high strength
 REAR_JAW_TOP_THICKNESS = 5.0;   // Beefy top clamping jaw
@@ -162,7 +163,7 @@ module single_monolithic_runner() {
         tag("remove")
             translate([0, front_y, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
-                    cuboid([RUNNER_WIDTH + 1, FRONT_CATCH_DEPTH + 4, KB_FRONT_THICKNESS + 1.2], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+                    cuboid([RUNNER_WIDTH + 1, FRONT_CATCH_DEPTH + 4, FRONT_LIP_GAP], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
