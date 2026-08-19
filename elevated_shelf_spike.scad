@@ -26,7 +26,7 @@ KB_DEPTH = 132.0;
 KB_FRONT_THICKNESS = 7.0;        // Front edge thickness of MX Keys Mini (~7mm)
 KB_REAR_THICKNESS = 20.5;
 KB_BATTERY_BAR_DEPTH = 25.0;     // Front-to-back depth of rear battery wedge
-KB_BATTERY_BAR_HEIGHT = 16.0;    // Height of rear battery bar above desk
+KB_BATTERY_BAR_HEIGHT = 22.0;    // Height (~2.2cm) of rear battery pack clearance above runner
 KB_TILT_ANGLE = 5.5;             // Resting slope angle of MX Keys Mini deck (degrees)
 
 /* [Trackpad Dimensions (Apple Magic Trackpad 2/3)] */
@@ -43,7 +43,7 @@ TP_SWITCH_HEIGHT = 10.0;
 LIP_RECESS = 1.0;               // Tray rim height offset below trackpad surface (glass is 1mm proud)
 
 /* [Elevated Shelf Geometry] */
-SHELF_ELEVATION_Z = 36.0;       // Vertical rise of trackpad shelf above keyboard battery bar
+SHELF_ELEVATION_Z = 46.0;       // Vertical rise of trackpad shelf above runner floor
 SHELF_SETBACK_Y = 16.0;         // Setback behind keyboard rear edge
 SHELF_TILT_ANGLE = 6.0;         // Ergonomic forward tilt angle (degrees)
 SHELF_FLOOR_THICKNESS = 2.5;
@@ -62,8 +62,8 @@ FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.0; // Low-profile total 
 
 REAR_JAW_WALL = 12.0;           // Solid, thick structural rear wall for high strength
 REAR_JAW_TOP_THICKNESS = 5.0;   // Beefy top clamping jaw
-REAR_JAW_OVERHANG = 8.0;        // Forward overhang retaining top of battery bar
-REAR_JAW_HEIGHT = KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS;
+REAR_JAW_OVERHANG = 9.0;        // Forward overhang retaining top of battery bar
+REAR_JAW_HEIGHT = RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS; // ~32mm total height
 
 /* [Riser & Crossbrace Settings] */
 RISER_THICKNESS = 10.0;         // Substantially thickened riser arms for zero flex
@@ -175,10 +175,10 @@ module rear_battery_jaw() {
         translate([0, (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2, RUNNER_THICKNESS + jaw_rise / 2])
             cuboid([RUNNER_WIDTH, jaw_total_depth, jaw_rise], rounding = CORNER_R, except = [BOT]);
 
-        // Open front pocket for MX Keys Mini rear battery bar
+        // Open front pocket for MX Keys Mini rear battery bar (~22mm / 2.2cm tall)
         tag("remove")
-            translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS + (KB_BATTERY_BAR_HEIGHT - RUNNER_THICKNESS) / 2])
-                cuboid([RUNNER_WIDTH + 1, REAR_JAW_OVERHANG + 0.2, KB_BATTERY_BAR_HEIGHT - RUNNER_THICKNESS + 0.1], rounding = 1.0, edges = "Y", anchor = CENTER);
+            translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT / 2])
+                cuboid([RUNNER_WIDTH + 1, REAR_JAW_OVERHANG + 0.2, KB_BATTERY_BAR_HEIGHT + 0.1], rounding = 1.0, edges = "Y", anchor = CENTER);
     }
 }
 
