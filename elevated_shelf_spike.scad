@@ -247,22 +247,17 @@ module trackpad_tray() {
             translate([0, 0, SHELF_FLOOR_THICKNESS])
                 cuboid([TP_WIDTH, TP_DEPTH, tray_h + 2], rounding = TP_CORNER_R, edges = "Z", anchor = BOT);
 
-        // 3. Low-profile Front Edge Scoop (comfortable for thumbs/palms)
-        tag("remove")
-            translate([0, -outer_d / 2, tray_h])
-                cuboid([TP_WIDTH - 24, TP_WALL_THICKNESS * 2 + 2, TP_FRONT_H], rounding = CORNER_R, anchor = TOP);
-
-        // 4. Rear Charging Port Cutout (Lightning / USB-C centered)
+        // 3. Rear Charging Port Cutout (Lightning / USB-C centered)
         tag("remove")
             translate([0, outer_d / 2, SHELF_FLOOR_THICKNESS + TP_PORT_HEIGHT / 2 + 1])
                 cuboid([TP_PORT_WIDTH, TP_WALL_THICKNESS * 2 + 2, TP_PORT_HEIGHT], rounding = CORNER_R, edges = "Y", anchor = CENTER);
 
-        // 5. Ergonomic Power Switch Cutout
+        // 4. Ergonomic Power Switch Cutout
         tag("remove")
             translate([switch_center_x, outer_d / 2, SHELF_FLOOR_THICKNESS])
                 cuboid([TP_SWITCH_WIDTH, TP_WALL_THICKNESS * 2 + 4, tray_h + 2], rounding = CORNER_R, edges = "Z", anchor = BOT);
 
-        // 6. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
+        // 5. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
         tag("remove")
             translate([0, 10, -0.5])
                 intersection() {
