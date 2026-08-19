@@ -234,9 +234,9 @@ module trackpad_tray() {
     outer_d = TP_DEPTH + TP_WALL_THICKNESS * 2;
 
     // Sloped tray rim heights (1.0mm lower than Magic Trackpad wedge surface at all points)
-    tray_front_h = SHELF_FLOOR_THICKNESS + TP_FRONT_H - LIP_RECESS;
-    tray_rear_h = SHELF_FLOOR_THICKNESS + TP_REAR_H - LIP_RECESS;
-    max_h = tray_rear_h + 10;
+    tray_front_h = SHELF_FLOOR_THICKNESS + TP_FRONT_H - LIP_RECESS; // 6.5mm total (4.0mm wall)
+    tray_rear_h = SHELF_FLOOR_THICKNESS + TP_REAR_H - LIP_RECESS;   // 13.0mm total (10.5mm wall)
+    max_h = tray_rear_h + 15;
     mid_h = (tray_front_h + tray_rear_h) / 2;
     wedge_angle = atan((tray_rear_h - tray_front_h) / outer_d);
 
@@ -245,28 +245,26 @@ module trackpad_tray() {
     switch_width = 16.0;
 
     diff() {
-        // 1. Outer tray solid with matching wedge slope
-        diff() {
-            cuboid([outer_w, outer_d, max_h], rounding = TP_CORNER_R + TP_WALL_THICKNESS, edges = "Z", anchor = BOT);
+        // 1. Main outer tray solid with rounded vertical corners
+        cuboid([outer_w, outer_d, max_h], rounding = TP_CORNER_R + TP_WALL_THICKNESS, edges = "Z", anchor = BOT);
 
-            // Angled planar slice trimming the top rim to follow the trackpad's wedge angle
-            tag("remove")
-                translate([0, 0, mid_h])
-                    xrot(wedge_angle)
-                        cuboid([outer_w + 10, outer_d * 2, max_h], anchor = BOT);
-        }
+        // 2. Angled planar slice: slopes the entire top rim from front (4mm wall) to rear (10.5mm wall)
+        tag("remove")
+            translate([0, 0, mid_h])
+                xrot(-wedge_angle)
+                    cuboid([outer_w + 20, outer_d * 2, max_h + 10], anchor = BOT);
 
-        // 2. Trackpad Recessed Cavity: Flat bottom with crisp 90° edges and rounded vertical corners (edges = "Z")
+        // 3. Trackpad Recessed Cavity: Flat bottom with crisp 90° edges and rounded vertical corners (edges = "Z")
         tag("remove")
             translate([0, 0, SHELF_FLOOR_THICKNESS])
                 cuboid([TP_WIDTH, TP_DEPTH, max_h + 2], rounding = TP_CORNER_R, edges = "Z", anchor = BOT);
 
-        // 3. Rear Charging Port Cutout (Lightning / USB-C centered)
+        // 4. Rear Charging Port Cutout (Lightning / USB-C centered)
         tag("remove")
             translate([0, outer_d / 2, SHELF_FLOOR_THICKNESS + TP_PORT_HEIGHT / 2 + 1])
                 cuboid([TP_PORT_WIDTH, TP_WALL_THICKNESS * 2 + 2, TP_PORT_HEIGHT], rounding = CORNER_R, edges = "Y", anchor = CENTER);
 
-        // 4. Ergonomic Power Switch Cutout with Rounded-Over Top Edges & Filleted Base
+        // 5. Ergonomic Power Switch Cutout with Rounded-Over Top Edges & Filleted Base
         tag("remove")
             translate([switch_center_x, outer_d / 2, 0])
                 power_switch_smooth_notch(
@@ -276,7 +274,7 @@ module trackpad_tray() {
                     wall_thickness = TP_WALL_THICKNESS
                 );
 
-        // 5. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
+        // 6. Rear-facing Semicircular Finger Push Notch (accessed from open rear area)
         tag("remove")
             translate([0, 10, -0.5])
                 intersection() {
