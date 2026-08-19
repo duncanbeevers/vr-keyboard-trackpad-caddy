@@ -27,6 +27,7 @@ KB_FRONT_THICKNESS = 6.5;
 KB_REAR_THICKNESS = 20.5;
 KB_BATTERY_BAR_DEPTH = 25.0;     // Front-to-back depth of rear battery wedge
 KB_BATTERY_BAR_HEIGHT = 16.0;    // Height of rear battery bar above desk
+KB_TILT_ANGLE = 5.5;             // Resting slope angle of MX Keys Mini deck (degrees)
 
 /* [Trackpad Dimensions (Apple Magic Trackpad 2/3)] */
 TP_WALL_THICKNESS = 3.5;
@@ -55,8 +56,8 @@ CORNER_R = 2.0;                 // Consistent global fillet/rounding radius
 
 /* [Keyboard Retention Hardware Settings] */
 FRONT_LIP_WALL = 5.0;
-FRONT_LIP_HEIGHT = 10.0;        // Low-profile front stop hooking front edge
-FRONT_CATCH_DEPTH = 3.0;        // Small overhang catch tab at top of front lip
+FRONT_CATCH_DEPTH = 4.0;        // Small overhang catch tab at top of front lip
+FRONT_LIP_HEIGHT = RUNNER_THICKNESS + KB_FRONT_THICKNESS + 3.0; // 14.5mm total height accommodating angled chin
 
 REAR_JAW_WALL = 12.0;           // Solid, thick structural rear wall for high strength
 REAR_JAW_TOP_THICKNESS = 5.0;   // Beefy top clamping jaw
@@ -157,10 +158,11 @@ module single_monolithic_runner() {
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Pocket creating the clean internal retention slot for keyboard front bezel
+        // 3. Subtractive Pocket angled to match the keyboard's exact 5.5° deck slope
         tag("remove")
             translate([0, front_y, RUNNER_THICKNESS])
-                cuboid([RUNNER_WIDTH + 1, FRONT_CATCH_DEPTH + 1, FRONT_LIP_HEIGHT - RUNNER_THICKNESS - 2.0], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+                xrot(KB_TILT_ANGLE)
+                    cuboid([RUNNER_WIDTH + 1, FRONT_CATCH_DEPTH + 4, KB_FRONT_THICKNESS + 1.2], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
