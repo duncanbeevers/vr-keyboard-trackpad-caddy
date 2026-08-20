@@ -60,15 +60,15 @@ STRUT_SPACING = 114.0;          // Spacing between left and right lap runners
 CORNER_R = 2.0;                 // Consistent global fillet/rounding radius
 
 /* [Keyboard Retention Hardware Settings] */
-FRONT_LIP_WALL = 5.0;
-FRONT_CATCH_DEPTH = 3.5;        // Overhang catch tab depth over front bezel
-FRONT_LIP_GAP = 7.6;            // Snug 7.6mm sloped opening for 6.5mm keyboard front
-FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.0; // Total height (~14.6mm)
+FRONT_LIP_WALL = 6.0;           // Solid base wall thickness for front chin stop
+FRONT_CATCH_DEPTH = 2.2;        // Low-profile under-bezel catch tab
+FRONT_LIP_HEIGHT = RUNNER_THICKNESS + 5.8; // Low-profile total height (~10.8mm), flush/sub-flush with aluminum deck
+FRONT_WATERFALL_CHAMFER = 3.5;  // Ergonomic 45-degree wrist waterfall ramp facing operator
 
-REAR_JAW_WALL = 12.0;           // Solid, thick structural rear wall for high strength
-REAR_JAW_TOP_THICKNESS = 4.5;   // Top clamping jaw thickness
-REAR_JAW_OVERHANG = 8.5;        // Forward overhang retaining top of battery bar
-REAR_JAW_HEIGHT = RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS; // Snug ~29.3mm total height
+REAR_JAW_WALL = 14.0;           // Heavy-duty structural rear fulcrum wall for maximum moment stiffness
+REAR_JAW_TOP_THICKNESS = 5.5;   // Thick top clamping beam resisting cantilever lifting loads
+REAR_JAW_OVERHANG = 13.5;       // Deep forward overhang locking over >50% of the rear battery bar
+REAR_JAW_HEIGHT = RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS; // ~30.8mm total height
 
 /* [Riser & Crossbrace Settings] */
 RISER_THICKNESS = 10.0;         // Substantially thickened riser arms for zero flex
@@ -182,6 +182,7 @@ module keyboard_lap_cradle() {
 module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
     total_len = (rear_y + REAR_JAW_WALL) - (front_y - FRONT_LIP_WALL);
     hook_len = FRONT_LIP_WALL + FRONT_CATCH_DEPTH;
+    hook_h = FRONT_LIP_HEIGHT - RUNNER_THICKNESS;
 
     diff() {
         // 1. Full-length bottom runner rail with continuous bottom fillets AND front vertical corner fillets
@@ -193,20 +194,20 @@ module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 +
                 anchor = BOT+FRONT
             );
 
-        // 2. Monolithic Front Upright Hook Block: continuous front vertical corners and top roundings
+        // 2. Monolithic Low-Profile Front Upright Stop Block (smooth ergonomic wrist curve)
         translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
             cuboid(
-                [RUNNER_WIDTH, hook_len, FRONT_LIP_HEIGHT - RUNNER_THICKNESS],
+                [RUNNER_WIDTH, hook_len, hook_h],
                 rounding = CORNER_R,
                 edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT],
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Retention Pocket: Starts 1.0mm ahead of keyboard front face and tilted at 5.5 deg
+        // 3. Subtractive Under-Bezel Pocket: Low-profile pocket with negative-draft chin lock
         tag("remove")
-            translate([0, front_y - 1.0, RUNNER_THICKNESS])
+            translate([0, front_y - 0.8, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
-                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 8, FRONT_LIP_GAP + 0.8], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 8, KB_FRONT_THICKNESS + 0.2], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
@@ -219,12 +220,18 @@ module rear_battery_jaw() {
         translate([0, (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2, RUNNER_THICKNESS + jaw_rise / 2])
             cuboid([RUNNER_WIDTH, jaw_total_depth, jaw_rise], rounding = CORNER_R, except = [BOT]);
 
-        // Open front pocket for MX Keys Mini rear battery bar (snug 1-2mm play matching keyboard slope)
+        // Deep Moment-Resisting Rear Pocket: firmly encases top, back, and underside of battery bar
         tag("remove")
             translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
                     translate([0, 0, KB_BATTERY_BAR_HEIGHT / 2])
                         cuboid([RUNNER_WIDTH + 2, REAR_JAW_OVERHANG + 1.5, KB_BATTERY_BAR_HEIGHT], rounding = 1.0, edges = "Y", anchor = CENTER);
+
+        // Entry lead-in chamfer on the lower lip of the top clamping beam for effortless slide-in
+        tag("remove")
+            translate([0, -REAR_JAW_OVERHANG, REAR_JAW_HEIGHT - REAR_JAW_TOP_THICKNESS])
+                xrot(-30)
+                    cuboid([RUNNER_WIDTH + 4, 3.0, 3.0], anchor = BOT+BACK);
     }
 }
 
