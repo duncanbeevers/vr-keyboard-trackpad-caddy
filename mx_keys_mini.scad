@@ -19,10 +19,10 @@ MX_MINI_BODY_THICKNESS = 6.00;   // Aluminum plate / chassis thickness (mm)
 MX_MINI_CORNER_RADIUS  = 12.00;  // Sweeping corner rounding radius on main plate (mm)
 
 /* [Rear Battery & Electronics Bar] */
-MX_MINI_BAR_WIDTH      = 256.00; // Battery bar width (mm)
+MX_MINI_BAR_WIDTH      = 274.00; // Battery bar width - extends to body corner fillets with 0 straight run (mm)
 MX_MINI_BAR_PROTRUSION = MX_MINI_TOTAL_DEPTH - MX_MINI_BODY_DEPTH; // ~12.95 mm protruding out back
 MX_MINI_BAR_DEPTH      = 26.00;  // Total front-to-back depth of battery bar (mm)
-MX_MINI_BAR_RADIUS     = 8.50;   // Corner radius on battery bar ends and bottom (mm)
+MX_MINI_BAR_RADIUS     = 3.50;   // Corner and edge rounding on battery bar (mm)
 
 /* [Keybed Geometry & Individual Keys] */
 MX_MINI_KEYBED_WIDTH   = 283.00;
@@ -81,6 +81,7 @@ module mx_keys_mini(anchor = CENTER, spin = 0, orient = UP, colors = true) {
     // The underside battery bar drop needed to level feet on flat ground
     feet_span_y   = y_bar_center - y_front_feet;
     bar_drop      = feet_span_y * tan(MX_MINI_TILT_ANGLE); // ~10.75mm
+    bar_total_h   = MX_MINI_BODY_THICKNESS + bar_drop;
 
     attachable(anchor, spin, orient, size = total_size) {
         translate([0, 0, -total_size.z / 2]) {
@@ -101,27 +102,14 @@ module mx_keys_mini(anchor = CENTER, spin = 0, orient = UP, colors = true) {
                             }
                         }
 
-                        // 2. Protruding Rear Battery & Electronics Bar
-                        // Top flush portion
+                        // 2. Protruding Rear Battery & Electronics Bar (Continuous-height vertical wall surrounding battery pack)
                         color(c_bar_top) {
-                            translate([0, y_bar_center, 0]) {
+                            translate([0, y_bar_center, -bar_drop]) {
                                 cuboid(
-                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, MX_MINI_BODY_THICKNESS],
+                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, bar_total_h],
                                     rounding = MX_MINI_BAR_RADIUS,
-                                    edges = [BACK+LEFT, BACK+RIGHT],
+                                    edges = [BACK+LEFT, BACK+RIGHT, FWD+LEFT, FWD+RIGHT, BOT+FWD, BOT+BACK, BOT+LEFT, BOT+RIGHT],
                                     anchor = BOT
-                                );
-                            }
-                        }
-
-                        // Underside riser pod
-                        color(c_bar_bot) {
-                            translate([0, y_bar_center, 0]) {
-                                cuboid(
-                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, bar_drop],
-                                    rounding = MX_MINI_BAR_RADIUS,
-                                    edges = [FWD+BOT, BACK+BOT, LEFT+BOT, RIGHT+BOT, BACK+LEFT, BACK+RIGHT, FWD+LEFT, FWD+RIGHT],
-                                    anchor = TOP
                                 );
                             }
                         }
