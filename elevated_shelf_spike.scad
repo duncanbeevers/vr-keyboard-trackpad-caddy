@@ -117,7 +117,7 @@ module installed_devices() {
 
 module installed_keyboard() {
     translate([0, 0, RUNNER_THICKNESS])
-        mx_keys_mini();
+        mx_keys_mini(anchor = BOT);
 }
 
 module installed_trackpad() {
@@ -125,7 +125,7 @@ module installed_trackpad() {
     translate([0, rear_y + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
         xrot(SHELF_TILT_ANGLE)
             translate([0, 0, SHELF_FLOOR_THICKNESS])
-                magic_trackpad();
+                magic_trackpad(anchor = BOT);
 }
 
 // ==========================================

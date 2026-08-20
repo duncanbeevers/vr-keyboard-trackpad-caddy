@@ -22,7 +22,6 @@ MX_MINI_CORNER_RADIUS  = 6.00;   // Corner rounding radius on main plate (mm)
 MX_MINI_BAR_WIDTH      = 246.00; // Battery bar width - narrower than main body (mm)
 MX_MINI_BAR_PROTRUSION = MX_MINI_TOTAL_DEPTH - MX_MINI_BODY_DEPTH; // ~12.95 mm protruding out back
 MX_MINI_BAR_DEPTH      = 26.00;  // Total front-to-back depth of battery bar (mm)
-MX_MINI_BAR_DROP       = 14.50;  // Height drop below keyboard plate (mm)
 MX_MINI_BAR_RADIUS     = 5.00;   // Corner radius on battery bar ends and bottom (mm)
 
 /* [Keybed Geometry & Individual Keys] */
@@ -77,131 +76,141 @@ module mx_keys_mini(anchor = CENTER, spin = 0, orient = UP, colors = true) {
     y_body_center = y_front_edge + MX_MINI_BODY_DEPTH / 2;
     y_bar_rear    = MX_MINI_TOTAL_DEPTH / 2;
     y_bar_center  = y_bar_rear - MX_MINI_BAR_DEPTH / 2;
+    y_front_feet  = y_front_edge + 7.0;
+
+    // The underside battery bar drop needed to level feet on flat ground
+    feet_span_y   = y_bar_center - y_front_feet;
+    bar_drop      = feet_span_y * tan(MX_MINI_TILT_ANGLE); // ~10.75mm
 
     attachable(anchor, spin, orient, size = total_size) {
         translate([0, 0, -total_size.z / 2]) {
-            xrot(MX_MINI_TILT_ANGLE) {
+            // Pivot around the front rubber feet contact line so bottom of feet rests exactly at Z = 0
+            translate([0, y_front_feet, MX_MINI_FRONT_FOOT_SIZE.z]) {
+                xrot(MX_MINI_TILT_ANGLE) {
+                    translate([0, -y_front_feet, 0]) {
 
-                // 1. Main Keyboard Top Deck / Body Plate
-                color(c_metal) {
-                    translate([0, y_body_center, 0]) {
-                        cuboid(
-                            [MX_MINI_BODY_WIDTH, MX_MINI_BODY_DEPTH, MX_MINI_BODY_THICKNESS],
-                            rounding = MX_MINI_CORNER_RADIUS,
-                            edges = "Z",
-                            anchor = BOT
-                        );
-                    }
-                }
-
-                // 2. Protruding Rear Battery & Electronics Bar
-                // Top flush portion
-                color(c_bar_top) {
-                    translate([0, y_bar_center, 0]) {
-                        cuboid(
-                            [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, MX_MINI_BODY_THICKNESS],
-                            rounding = MX_MINI_BAR_RADIUS,
-                            edges = [BACK+LEFT, BACK+RIGHT],
-                            anchor = BOT
-                        );
-                    }
-                }
-
-                // Underside riser pod
-                color(c_bar_bot) {
-                    translate([0, y_bar_center, 0]) {
-                        cuboid(
-                            [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, MX_MINI_BAR_DROP],
-                            rounding = MX_MINI_BAR_RADIUS,
-                            edges = [FWD+BOT, BACK+BOT, LEFT+BOT, RIGHT+BOT, BACK+LEFT, BACK+RIGHT, FWD+LEFT, FWD+RIGHT],
-                            anchor = TOP
-                        );
-                    }
-                }
-
-                // 3. Individual Keys Grid (75% Compact Layout)
-                color(c_keycap) {
-                    translate([
-                        -MX_MINI_KEYBED_WIDTH / 2,
-                        y_front_edge + MX_MINI_KEYBED_MARGIN_BOTTOM,
-                        MX_MINI_BODY_THICKNESS
-                    ]) {
-                        mx_mini_keys(
-                            total_width  = MX_MINI_KEYBED_WIDTH,
-                            total_depth  = MX_MINI_KEYBED_DEPTH,
-                            key_height   = MX_MINI_KEY_HEIGHT,
-                            key_radius   = MX_MINI_KEY_ROUNDING,
-                            corner_radius = MX_MINI_CORNER_KEY_R
-                        );
-                    }
-                }
-
-                // 4. "logi" logo badge on top center of the rear protrusion
-                color(c_logo) {
-                    translate([0, y_bar_rear - MX_MINI_BAR_PROTRUSION / 2, MX_MINI_BODY_THICKNESS + 0.05]) {
-                        cuboid([14.0, 4.5, 0.1], rounding = 1.0, edges = "Z", anchor = BOT);
-                    }
-                }
-
-                // 5. Pill-shaped Status LED on top right of the rear protrusion
-                color(c_led) {
-                    translate([
-                        MX_MINI_BAR_WIDTH / 2 - MX_MINI_LED_OFFSET,
-                        y_bar_rear - MX_MINI_BAR_PROTRUSION / 2,
-                        MX_MINI_BODY_THICKNESS + 0.05
-                    ]) {
-                        cuboid(
-                            MX_MINI_LED_SIZE,
-                            rounding = MX_MINI_LED_SIZE.y / 2,
-                            edges = "Z",
-                            anchor = BOT
-                        );
-                    }
-                }
-
-                // 6. Rear Vertical Face Controls
-                // Power switch
-                translate([
-                    MX_MINI_BAR_WIDTH / 2 - MX_MINI_POWER_SWITCH_OFFSET,
-                    y_bar_rear,
-                    MX_MINI_BODY_THICKNESS / 2
-                ]) {
-                    color(c_keycap)
-                        cuboid([MX_MINI_POWER_SWITCH_SIZE.x, 1.0, MX_MINI_POWER_SWITCH_SIZE.z], anchor = CENTER);
-                    color(c_accent)
-                        translate([1.5, 0.4, 0])
-                            cuboid([3.0, 1.2, MX_MINI_POWER_SWITCH_SIZE.z * 0.8], anchor = CENTER);
-                }
-
-                // USB-C Charging Port
-                translate([
-                    MX_MINI_BAR_WIDTH / 2 - MX_MINI_USBC_OFFSET,
-                    y_bar_rear,
-                    MX_MINI_BODY_THICKNESS / 2
-                ]) {
-                    color(c_keycap)
-                        cuboid([MX_MINI_USBC_SIZE.x, 1.0, MX_MINI_USBC_SIZE.z], rounding = 1.5, edges = "Y", anchor = CENTER);
-                }
-
-                // 7. Rubber Feet (3 front, 2 rear)
-                color(c_rubber) {
-                    for (x_pos = [-MX_MINI_BODY_WIDTH / 2 + 35.0, 0, MX_MINI_BODY_WIDTH / 2 - 35.0]) {
-                        translate([
-                            x_pos,
-                            y_front_edge + 7.0,
-                            -MX_MINI_FRONT_FOOT_SIZE.z
-                        ]) {
-                            cuboid(MX_MINI_FRONT_FOOT_SIZE, rounding = 2.0, edges = "Z", anchor = BOT);
+                        // 1. Main Keyboard Top Deck / Body Plate
+                        color(c_metal) {
+                            translate([0, y_body_center, 0]) {
+                                cuboid(
+                                    [MX_MINI_BODY_WIDTH, MX_MINI_BODY_DEPTH, MX_MINI_BODY_THICKNESS],
+                                    rounding = MX_MINI_CORNER_RADIUS,
+                                    edges = "Z",
+                                    anchor = BOT
+                                );
+                            }
                         }
-                    }
 
-                    for (x_pos = [-MX_MINI_BAR_WIDTH / 2 + 22.0, MX_MINI_BAR_WIDTH / 2 - 22.0]) {
+                        // 2. Protruding Rear Battery & Electronics Bar
+                        // Top flush portion
+                        color(c_bar_top) {
+                            translate([0, y_bar_center, 0]) {
+                                cuboid(
+                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, MX_MINI_BODY_THICKNESS],
+                                    rounding = MX_MINI_BAR_RADIUS,
+                                    edges = [BACK+LEFT, BACK+RIGHT],
+                                    anchor = BOT
+                                );
+                            }
+                        }
+
+                        // Underside riser pod
+                        color(c_bar_bot) {
+                            translate([0, y_bar_center, 0]) {
+                                cuboid(
+                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, bar_drop],
+                                    rounding = MX_MINI_BAR_RADIUS,
+                                    edges = [FWD+BOT, BACK+BOT, LEFT+BOT, RIGHT+BOT, BACK+LEFT, BACK+RIGHT, FWD+LEFT, FWD+RIGHT],
+                                    anchor = TOP
+                                );
+                            }
+                        }
+
+                        // 3. Individual Keys Grid (75% Compact Layout)
+                        color(c_keycap) {
+                            translate([
+                                -MX_MINI_KEYBED_WIDTH / 2,
+                                y_front_edge + MX_MINI_KEYBED_MARGIN_BOTTOM,
+                                MX_MINI_BODY_THICKNESS
+                            ]) {
+                                mx_mini_keys(
+                                    total_width  = MX_MINI_KEYBED_WIDTH,
+                                    total_depth  = MX_MINI_KEYBED_DEPTH,
+                                    key_height   = MX_MINI_KEY_HEIGHT,
+                                    key_radius   = MX_MINI_KEY_ROUNDING,
+                                    corner_radius = MX_MINI_CORNER_KEY_R
+                                );
+                            }
+                        }
+
+                        // 4. "logi" logo badge on top center of the rear protrusion
+                        color(c_logo) {
+                            translate([0, y_bar_rear - MX_MINI_BAR_PROTRUSION / 2, MX_MINI_BODY_THICKNESS + 0.05]) {
+                                cuboid([14.0, 4.5, 0.1], rounding = 1.0, edges = "Z", anchor = BOT);
+                            }
+                        }
+
+                        // 5. Pill-shaped Status LED on top right of the rear protrusion
+                        color(c_led) {
+                            translate([
+                                MX_MINI_BAR_WIDTH / 2 - MX_MINI_LED_OFFSET,
+                                y_bar_rear - MX_MINI_BAR_PROTRUSION / 2,
+                                MX_MINI_BODY_THICKNESS + 0.05
+                            ]) {
+                                cuboid(
+                                    MX_MINI_LED_SIZE,
+                                    rounding = MX_MINI_LED_SIZE.y / 2,
+                                    edges = "Z",
+                                    anchor = BOT
+                                );
+                            }
+                        }
+
+                        // 6. Rear Vertical Face Controls
+                        // Power switch
                         translate([
-                            x_pos,
-                            y_bar_center,
-                            -MX_MINI_BAR_DROP - MX_MINI_REAR_FOOT_SIZE.z
+                            MX_MINI_BAR_WIDTH / 2 - MX_MINI_POWER_SWITCH_OFFSET,
+                            y_bar_rear,
+                            MX_MINI_BODY_THICKNESS / 2
                         ]) {
-                            cuboid(MX_MINI_REAR_FOOT_SIZE, rounding = 3.0, edges = "Z", anchor = BOT);
+                            color(c_keycap)
+                                cuboid([MX_MINI_POWER_SWITCH_SIZE.x, 1.0, MX_MINI_POWER_SWITCH_SIZE.z], anchor = CENTER);
+                            color(c_accent)
+                                translate([1.5, 0.4, 0])
+                                    cuboid([3.0, 1.2, MX_MINI_POWER_SWITCH_SIZE.z * 0.8], anchor = CENTER);
+                        }
+
+                        // USB-C Charging Port
+                        translate([
+                            MX_MINI_BAR_WIDTH / 2 - MX_MINI_USBC_OFFSET,
+                            y_bar_rear,
+                            MX_MINI_BODY_THICKNESS / 2
+                        ]) {
+                            color(c_keycap)
+                                cuboid([MX_MINI_USBC_SIZE.x, 1.0, MX_MINI_USBC_SIZE.z], rounding = 1.5, edges = "Y", anchor = CENTER);
+                        }
+
+                        // 7. Rubber Feet (3 front, 2 rear)
+                        color(c_rubber) {
+                            for (x_pos = [-MX_MINI_BODY_WIDTH / 2 + 35.0, 0, MX_MINI_BODY_WIDTH / 2 - 35.0]) {
+                                translate([
+                                    x_pos,
+                                    y_front_feet,
+                                    -MX_MINI_FRONT_FOOT_SIZE.z
+                                ]) {
+                                    cuboid(MX_MINI_FRONT_FOOT_SIZE, rounding = 2.0, edges = "Z", anchor = BOT);
+                                }
+                            }
+
+                            for (x_pos = [-MX_MINI_BAR_WIDTH / 2 + 22.0, MX_MINI_BAR_WIDTH / 2 - 22.0]) {
+                                translate([
+                                    x_pos,
+                                    y_bar_center,
+                                    -bar_drop - MX_MINI_REAR_FOOT_SIZE.z
+                                ]) {
+                                    cuboid(MX_MINI_REAR_FOOT_SIZE, rounding = 3.0, edges = "Z", anchor = BOT);
+                                }
+                            }
                         }
                     }
                 }
