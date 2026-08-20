@@ -82,23 +82,23 @@ $fn = 72;
 // ==========================================
 if (MODE == "assembled") {
     monolithic_assembly();
-    if (SHOW_DEVICES) installed_devices();
+    if (SHOW_DEVICES && $preview) installed_devices();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "single_piece_diagonal") {
     translate([0, 0, BED_Z / 2])
         zrot(45)
             xrot(-35) {
                 monolithic_assembly();
-                if (SHOW_DEVICES) installed_devices();
+                if (SHOW_DEVICES && $preview) installed_devices();
             }
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "cradle_only") {
     keyboard_lap_cradle();
-    if (SHOW_DEVICES) installed_keyboard();
+    if (SHOW_DEVICES && $preview) installed_keyboard();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "shelf_only") {
     trackpad_shelf_assembly();
-    if (SHOW_DEVICES) installed_trackpad();
+    if (SHOW_DEVICES && $preview) installed_trackpad();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 }
 
