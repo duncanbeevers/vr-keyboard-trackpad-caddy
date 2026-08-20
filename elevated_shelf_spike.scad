@@ -1,4 +1,6 @@
 include <BOSL2/std.scad>
+use <mx_keys_mini.scad>
+use <magic_trackpad.scad>
 
 /* 
  * Elevated Magic Trackpad Shelf & MX Keys Mini Lap Cradle
@@ -13,6 +15,9 @@ include <BOSL2/std.scad>
 
 /* [Display Mode] */
 MODE = "assembled"; // [assembled:Full Monolithic Assembly, single_piece_diagonal:Tilted 3D Monolithic Print (Fits Prusa Mini 180x180x180mm), cradle_only:Keyboard Cradle Only, shelf_only:Elevated Shelf Only]
+
+/* [Device Visualization] */
+SHOW_DEVICES = true;            // Render imported MX Keys Mini and Magic Trackpad models for fit check
 
 /* [Prusa Mini Build Volume Check] */
 SHOW_BED_BOUNDS = false;        // Show translucent 180x180x180mm Prusa Mini build volume
@@ -77,18 +82,23 @@ $fn = 72;
 // ==========================================
 if (MODE == "assembled") {
     monolithic_assembly();
+    if (SHOW_DEVICES) installed_devices();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "single_piece_diagonal") {
     translate([0, 0, BED_Z / 2])
         zrot(45)
-            xrot(-35)
+            xrot(-35) {
                 monolithic_assembly();
+                if (SHOW_DEVICES) installed_devices();
+            }
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "cradle_only") {
     keyboard_lap_cradle();
+    if (SHOW_DEVICES) installed_keyboard();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 } else if (MODE == "shelf_only") {
     trackpad_shelf_assembly();
+    if (SHOW_DEVICES) installed_trackpad();
     if (SHOW_BED_BOUNDS) prusa_mini_bounds();
 }
 
@@ -98,12 +108,35 @@ module prusa_mini_bounds() {
 }
 
 // ==========================================
+// Installed Hardware Models (Fit Verification)
+// ==========================================
+module installed_devices() {
+    installed_keyboard();
+    installed_trackpad();
+}
+
+module installed_keyboard() {
+    translate([0, 0, RUNNER_THICKNESS])
+        mx_keys_mini();
+}
+
+module installed_trackpad() {
+    rear_y = KB_DEPTH / 2;
+    translate([0, rear_y + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
+        xrot(SHELF_TILT_ANGLE)
+            translate([0, 0, SHELF_FLOOR_THICKNESS])
+                magic_trackpad();
+}
+
+// ==========================================
 // Monolithic Unified Assembly (Single Piece)
 // ==========================================
 module monolithic_assembly() {
-    union() {
-        keyboard_lap_cradle();
-        trackpad_shelf_assembly();
+    color([0.88, 0.72, 0.15]) { // Gold/amber 3D print filament
+        union() {
+            keyboard_lap_cradle();
+            trackpad_shelf_assembly();
+        }
     }
 }
 
