@@ -16,20 +16,20 @@ MX_MINI_TILT_ANGLE     = 5.50;   // Natural resting tilt angle (deg)
 MX_MINI_BODY_WIDTH     = MX_MINI_TOTAL_WIDTH; // 295.99 mm
 MX_MINI_BODY_DEPTH     = 119.00; // Front plate depth before rear battery bar protrusion (mm)
 MX_MINI_BODY_THICKNESS = 6.00;   // Aluminum plate / chassis thickness (mm)
-MX_MINI_CORNER_RADIUS  = 6.00;   // Corner rounding radius on main plate (mm)
+MX_MINI_CORNER_RADIUS  = 12.00;  // Sweeping corner rounding radius on main plate (mm)
 
 /* [Rear Battery & Electronics Bar] */
-MX_MINI_BAR_WIDTH      = 246.00; // Battery bar width - narrower than main body (mm)
+MX_MINI_BAR_WIDTH      = 256.00; // Battery bar width (mm)
 MX_MINI_BAR_PROTRUSION = MX_MINI_TOTAL_DEPTH - MX_MINI_BODY_DEPTH; // ~12.95 mm protruding out back
 MX_MINI_BAR_DEPTH      = 26.00;  // Total front-to-back depth of battery bar (mm)
-MX_MINI_BAR_RADIUS     = 5.00;   // Corner radius on battery bar ends and bottom (mm)
+MX_MINI_BAR_RADIUS     = 8.50;   // Corner radius on battery bar ends and bottom (mm)
 
 /* [Keybed Geometry & Individual Keys] */
 MX_MINI_KEYBED_WIDTH   = 283.00;
 MX_MINI_KEYBED_DEPTH   = 106.00;
 MX_MINI_KEY_HEIGHT     = 1.80;   // Keycap protrusion above plate (mm)
-MX_MINI_KEY_ROUNDING   = 2.00;   // Standard keycap corner rounding radius (mm)
-MX_MINI_CORNER_KEY_R   = 4.50;   // Deep curvature on outer corner keys matching frame (mm)
+MX_MINI_KEY_ROUNDING   = 3.20;   // Soft squircle keycap corner rounding radius (mm)
+MX_MINI_CORNER_KEY_R   = 7.50;   // Deep curvature on outer corner keys matching frame (mm)
 MX_MINI_KEYBED_MARGIN_BOTTOM = 6.0;
 
 /* [Ports & Controls (on Rear Face of Battery Bar)] */
@@ -239,7 +239,7 @@ module mx_mini_keys(total_width, total_depth, key_height, key_radius, corner_rad
     row3 = [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5]; // Tab, Q-P, [, ], \ (15U)
     row2 = [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25]; // Caps, A-L, ;, ', Enter (15U)
     row1 = [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75];    // LShift, Z-/, RShift (15U)
-    row0 = [1.0, 1.0, 1.0, 1.25, 5.05, 1.25, 0.95, 0.80, 0.90, 0.90, 0.90]; // Bottom row + arrow cluster (15U)
+    row0 = [1.0, 1.0, 1.0, 1.25, 5.75, 1.25, 1.0, 0.90, 0.95, 0.90]; // Bottom row + arrow cluster (15U)
 
     // Row Y offsets from front to back
     y0 = 0;
@@ -280,11 +280,12 @@ module render_fn_row(row_units, y_pos, row_height, pitch_x, gap_x, key_height, k
         x_offset = (i == 0) ? 0 : sum([for (j = [0 : i - 1]) row_units[j]]) * pitch_x;
         key_w = row_units[i] * pitch_x - gap_x;
         r_std = min(key_radius, min(key_w, row_height) / 4);
+        r_corner = min(corner_radius, row_height - r_std - 0.5);
 
         // BOSL2 rect rounding order: [NE, NW, SW, SE]
         corner_roundings = 
-            (i == 0) ? [r_std, corner_radius, r_std, r_std] : // Esc (NW / Top-Left)
-            (i == len(row_units) - 1) ? [corner_radius, r_std, r_std, r_std] : // Del (NE / Top-Right)
+            (i == 0) ? [r_std, r_corner, r_std, r_std] : // Esc (NW / Top-Left)
+            (i == len(row_units) - 1) ? [r_corner, r_std, r_std, r_std] : // Del (NE / Top-Right)
             r_std; // Standard inner keys
 
         translate([x_offset, y_pos, 0]) {
@@ -299,26 +300,27 @@ module render_bottom_row(row_units, y_pos, row_height, pitch_x, gap_x, gap_y, ke
     half_h = (row_height - gap_y) / 2;
     r_std  = min(key_radius, row_height / 4);
     r_half = min(key_radius, half_h / 3);
+    r_arrow_corner = min(corner_radius, half_h - 1.0);
 
     for (i = [0 : len(row_units) - 1]) {
         x_offset = (i == 0) ? 0 : sum([for (j = [0 : i - 1]) row_units[j]]) * pitch_x;
         key_w = row_units[i] * pitch_x - gap_x;
 
         if (i == 0) {
-            // Left Ctrl (SW / Bottom-Left corner rounded to match frame)
+            // Left Fn/Ctrl (SW / Bottom-Left corner rounded to match frame)
             translate([x_offset, y_pos, 0]) {
                 linear_extrude(height = key_height) {
                     rect([key_w, row_height], rounding = [r_std, r_std, corner_radius, r_std], anchor = FWD+LEFT);
                 }
             }
-        } else if (i == 8) {
+        } else if (i == 7) {
             // Left Arrow (half-height on bottom half of row)
             translate([x_offset, y_pos, 0]) {
                 linear_extrude(height = key_height) {
                     rect([key_w, half_h], rounding = r_half, anchor = FWD+LEFT);
                 }
             }
-        } else if (i == 9) {
+        } else if (i == 8) {
             // Up / Down arrow stacked pair (half-height each)
             // Down Arrow (bottom)
             translate([x_offset, y_pos, 0]) {
@@ -332,15 +334,15 @@ module render_bottom_row(row_units, y_pos, row_height, pitch_x, gap_x, gap_y, ke
                     rect([key_w, half_h], rounding = r_half, anchor = FWD+LEFT);
                 }
             }
-        } else if (i == 10) {
+        } else if (i == 9) {
             // Right Arrow (half-height on bottom half of row, SE / Bottom-Right corner rounded to match frame)
             translate([x_offset, y_pos, 0]) {
                 linear_extrude(height = key_height) {
-                    rect([key_w, half_h], rounding = [r_half, r_half, r_half, corner_radius], anchor = FWD+LEFT);
+                    rect([key_w, half_h], rounding = [1.0, 1.0, 1.0, r_arrow_corner], anchor = FWD+LEFT);
                 }
             }
         } else {
-            // Standard bottom row keys (Fn, Opt, Cmd, Space, Cmd, Opt, Ctrl)
+            // Standard bottom row keys (Opt, Cmd, Space, Cmd, Opt)
             translate([x_offset, y_pos, 0]) {
                 linear_extrude(height = key_height) {
                     rect([key_w, row_height], rounding = r_std, anchor = FWD+LEFT);
