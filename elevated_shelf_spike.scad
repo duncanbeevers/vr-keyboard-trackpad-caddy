@@ -28,11 +28,11 @@ BED_Z = 180.0;
 /* [Keyboard Dimensions (Logitech MX Keys Mini)] */
 KB_WIDTH = 296.0;
 KB_DEPTH = 132.0;
-KB_FRONT_THICKNESS = 7.0;        // Front edge thickness of MX Keys Mini (~7mm)
-KB_REAR_THICKNESS = 20.5;
-KB_BATTERY_BAR_DEPTH = 25.0;     // Front-to-back depth of rear battery wedge
-KB_BATTERY_BAR_HEIGHT = 22.0;    // Height (~2.2cm) of rear battery pack clearance above runner
+KB_FRONT_THICKNESS = 6.5;        // Front edge thickness of MX Keys Mini (~6.0-6.5mm)
+KB_BATTERY_BAR_DEPTH = 26.0;     // Front-to-back depth of rear battery bar
+KB_BATTERY_BAR_HEIGHT = 19.8;    // Snug height (~19.8mm above runner floor) with 1.0mm play for 18.8mm rear bar
 KB_TILT_ANGLE = 5.5;             // Resting slope angle of MX Keys Mini deck (degrees)
+KB_FIT_TOLERANCE = 1.5;          // Front-to-back length play (1.5mm) for easy drop-in
 
 /* [Trackpad Dimensions (Apple Magic Trackpad 2/3)] */
 TP_WALL_THICKNESS = 3.5;
@@ -61,14 +61,14 @@ CORNER_R = 2.0;                 // Consistent global fillet/rounding radius
 
 /* [Keyboard Retention Hardware Settings] */
 FRONT_LIP_WALL = 5.0;
-FRONT_CATCH_DEPTH = 3.0;        // Overhang catch tab depth over front bezel
-FRONT_LIP_GAP = 7.4;            // Snug 7.4mm vertical opening for 7.0mm keyboard front
-FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.0; // Low-profile total height (~14.4mm)
+FRONT_CATCH_DEPTH = 3.5;        // Overhang catch tab depth over front bezel
+FRONT_LIP_GAP = 7.6;            // Snug 7.6mm sloped opening for 6.5mm keyboard front
+FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.0; // Total height (~14.6mm)
 
 REAR_JAW_WALL = 12.0;           // Solid, thick structural rear wall for high strength
-REAR_JAW_TOP_THICKNESS = 5.0;   // Beefy top clamping jaw
-REAR_JAW_OVERHANG = 9.0;        // Forward overhang retaining top of battery bar
-REAR_JAW_HEIGHT = RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS; // ~32mm total height
+REAR_JAW_TOP_THICKNESS = 4.5;   // Top clamping jaw thickness
+REAR_JAW_OVERHANG = 8.5;        // Forward overhang retaining top of battery bar
+REAR_JAW_HEIGHT = RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT + REAR_JAW_TOP_THICKNESS; // Snug ~29.3mm total height
 
 /* [Riser & Crossbrace Settings] */
 RISER_THICKNESS = 10.0;         // Substantially thickened riser arms for zero flex
@@ -121,7 +121,7 @@ module installed_keyboard() {
 }
 
 module installed_trackpad() {
-    rear_y = KB_DEPTH / 2;
+    rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE;
     translate([0, rear_y + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
         xrot(SHELF_TILT_ANGLE)
             translate([0, 0, SHELF_FLOOR_THICKNESS])
@@ -145,17 +145,17 @@ module monolithic_assembly() {
 // ==========================================
 module keyboard_lap_cradle() {
     front_y = -KB_DEPTH / 2;
-    rear_y = KB_DEPTH / 2;
+    rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE;
 
     union() {
         // Continuous lap runners with monolithic front J-hooks
         xcopies(spacing = STRUT_SPACING, n = 2) {
-            single_monolithic_runner();
+            single_monolithic_runner(front_y = front_y, rear_y = rear_y);
         }
 
-        // Front crossbrace linking the runners
+        // Front crossbrace linking the runners (spans cleanly between runner centers)
         translate([0, front_y + CROSSBRACE_WIDTH / 2 + 2, 0])
-            cuboid([STRUT_SPACING + RUNNER_WIDTH, CROSSBRACE_WIDTH, RUNNER_THICKNESS], rounding = CORNER_R, except = [TOP], anchor = BOT);
+            cuboid([STRUT_SPACING, CROSSBRACE_WIDTH, RUNNER_THICKNESS], rounding = CORNER_R, edges = [FWD+BOT, BACK+BOT], anchor = BOT);
 
         // Middle X-crossbrace across lap span
         x_lap_crossbrace(
@@ -169,7 +169,7 @@ module keyboard_lap_cradle() {
 
         // Rear crossbrace anchoring the battery clamp and riser base
         translate([0, rear_y - KB_BATTERY_BAR_DEPTH / 2, 0])
-            cuboid([STRUT_SPACING + RUNNER_WIDTH, KB_BATTERY_BAR_DEPTH, RUNNER_THICKNESS], rounding = CORNER_R, except = [TOP], anchor = BOT);
+            cuboid([STRUT_SPACING, KB_BATTERY_BAR_DEPTH, RUNNER_THICKNESS], rounding = CORNER_R, edges = [FWD+BOT, BACK+BOT], anchor = BOT);
 
         // Integrated Rear Battery Clamp Jaws (2x)
         xcopies(spacing = STRUT_SPACING, n = 2) {
@@ -179,29 +179,28 @@ module keyboard_lap_cradle() {
     }
 }
 
-module single_monolithic_runner() {
-    front_y = -KB_DEPTH / 2;
-    rear_y = KB_DEPTH / 2;
+module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
     total_len = (rear_y + REAR_JAW_WALL) - (front_y - FRONT_LIP_WALL);
 
     diff() {
-        // 1. Full-length bottom runner rail with uniform bottom fillets
+        // 1. Full-length bottom runner rail with continuous, unmarred bottom fillets
         translate([0, front_y - FRONT_LIP_WALL, 0])
-            cuboid([RUNNER_WIDTH, total_len, RUNNER_THICKNESS], rounding = CORNER_R, except = [TOP], anchor = BOT+FRONT);
+            cuboid([RUNNER_WIDTH, total_len, RUNNER_THICKNESS], rounding = CORNER_R, edges = [LEFT+BOT, RIGHT+BOT, FRONT+BOT, BACK+BOT], anchor = BOT+FRONT);
 
-        // 2. Monolithic Front Upright Hook Block (continuous bottom-edge & top-edge fillets)
-        translate([0, front_y - FRONT_LIP_WALL, 0])
+        // 2. Monolithic Front Upright Hook Block: flat side faces coplanar with runner rail
+        translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
             cuboid(
-                [RUNNER_WIDTH, FRONT_LIP_WALL + FRONT_CATCH_DEPTH, FRONT_LIP_HEIGHT],
+                [RUNNER_WIDTH, FRONT_LIP_WALL + FRONT_CATCH_DEPTH, FRONT_LIP_HEIGHT - RUNNER_THICKNESS],
                 rounding = CORNER_R,
-                edges = [FRONT+BOT, LEFT+BOT, RIGHT+BOT, FRONT+TOP, BACK+TOP, LEFT+TOP, RIGHT+TOP],
+                edges = [FRONT+TOP, BACK+TOP],
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Retention Pocket: Flat floor contiguous with runner top surface
+        // 3. Subtractive Retention Pocket: Angled at KB_TILT_ANGLE (5.5°) matching resting keyboard slope
         tag("remove")
-            translate([0, front_y, RUNNER_THICKNESS - 0.1])
-                cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 2, FRONT_LIP_GAP + 0.1], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+            translate([0, front_y + 0.4, RUNNER_THICKNESS])
+                xrot(KB_TILT_ANGLE)
+                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 3, FRONT_LIP_GAP + 0.4], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
@@ -214,10 +213,12 @@ module rear_battery_jaw() {
         translate([0, (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2, RUNNER_THICKNESS + jaw_rise / 2])
             cuboid([RUNNER_WIDTH, jaw_total_depth, jaw_rise], rounding = CORNER_R, except = [BOT]);
 
-        // Open front pocket for MX Keys Mini rear battery bar (~22mm / 2.2cm tall)
+        // Open front pocket for MX Keys Mini rear battery bar (snug 1-2mm play matching keyboard slope)
         tag("remove")
-            translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT / 2])
-                cuboid([RUNNER_WIDTH + 1, REAR_JAW_OVERHANG + 0.2, KB_BATTERY_BAR_HEIGHT + 0.1], rounding = 1.0, edges = "Y", anchor = CENTER);
+            translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS])
+                xrot(KB_TILT_ANGLE)
+                    translate([0, 0, KB_BATTERY_BAR_HEIGHT / 2])
+                        cuboid([RUNNER_WIDTH + 2, REAR_JAW_OVERHANG + 1.5, KB_BATTERY_BAR_HEIGHT], rounding = 1.0, edges = "Y", anchor = CENTER);
     }
 }
 
@@ -225,19 +226,19 @@ module x_lap_crossbrace(span_x, y_front, y_rear, bar_w, thickness, r) {
     y_center = (y_front + y_rear) / 2;
     dy = y_rear - y_front;
     dx = span_x;
-    diag_len = hypot(dx, dy) + RUNNER_WIDTH;
+    diag_len = hypot(dx, dy) + RUNNER_WIDTH / 2;
     angle = atan2(dy, dx);
 
     translate([0, y_center, 0]) {
         intersection() {
-            // Keep X-arms neatly contained within the outer footprint of runners and crossbraces
-            cuboid([span_x + RUNNER_WIDTH, dy + CROSSBRACE_WIDTH, thickness * 2], anchor = BOT);
+            // Keep X-arms inside runner centers so outer rail sides remain completely smooth and unblemished
+            cuboid([span_x, dy + CROSSBRACE_WIDTH, thickness * 2], anchor = BOT);
 
             union() {
                 zrot(angle)
-                    cuboid([diag_len, bar_w, thickness], rounding = r, except = [TOP], anchor = BOT);
+                    cuboid([diag_len, bar_w, thickness], rounding = r, edges = [FWD+BOT, BACK+BOT], anchor = BOT);
                 zrot(-angle)
-                    cuboid([diag_len, bar_w, thickness], rounding = r, except = [TOP], anchor = BOT);
+                    cuboid([diag_len, bar_w, thickness], rounding = r, edges = [FWD+BOT, BACK+BOT], anchor = BOT);
             }
         }
     }
@@ -247,11 +248,11 @@ module x_lap_crossbrace(span_x, y_front, y_rear, bar_w, thickness, r) {
 // Module: Elevated Trackpad Shelf & Integrated Riser
 // ==========================================
 module trackpad_shelf_assembly() {
-    rear_y = KB_DEPTH / 2;
+    rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE;
 
     union() {
         // Integrated Monolithic Cantilever Riser Struts
-        riser_struts();
+        riser_struts(rear_y = rear_y);
 
         // Elevated Trackpad Tray positioned above & behind function keys
         translate([0, rear_y + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
@@ -260,16 +261,16 @@ module trackpad_shelf_assembly() {
     }
 }
 
-module riser_struts() {
+module riser_struts(rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
     union() {
         // Twin heavy-duty curved cantilever arms fused seamlessly into the rear jaw clamp
         xcopies(spacing = STRUT_SPACING, n = 2) {
-            single_integrated_riser();
+            single_integrated_riser(rear_y = rear_y);
         }
 
         // Solid, continuous structural center crossbrace (no cutouts, maximizing torsional rigidity)
         backplate_center_z = (REAR_JAW_HEIGHT + SHELF_ELEVATION_Z - 2) / 2;
-        backplate_center_y = KB_DEPTH / 2 + (REAR_JAW_WALL + SHELF_SETBACK_Y) / 2;
+        backplate_center_y = rear_y + (REAR_JAW_WALL + SHELF_SETBACK_Y) / 2;
         backplate_h = (SHELF_ELEVATION_Z - REAR_JAW_HEIGHT) / cos(15);
 
         translate([0, backplate_center_y, backplate_center_z])
@@ -278,15 +279,15 @@ module riser_struts() {
     }
 }
 
-module single_integrated_riser() {
+module single_integrated_riser(rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
     // Seamless thick structural hull connecting the top and rear of the battery jaw to the shelf underside
     hull() {
         // Base connection: fully envelopes the thick top and back wall of the battery jaw
-        translate([0, KB_DEPTH / 2 + (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2, REAR_JAW_HEIGHT - REAR_JAW_TOP_THICKNESS / 2])
+        translate([0, rear_y + (REAR_JAW_WALL - REAR_JAW_OVERHANG) / 2, REAR_JAW_HEIGHT - REAR_JAW_TOP_THICKNESS / 2])
             cuboid([RUNNER_WIDTH, REAR_JAW_WALL + REAR_JAW_OVERHANG, REAR_JAW_TOP_THICKNESS], rounding = CORNER_R, anchor = CENTER);
 
         // Upper connection: terminates cleanly against the underside of the trackpad tray (anchor = TOP)
-        translate([0, KB_DEPTH / 2 + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
+        translate([0, rear_y + SHELF_SETBACK_Y, SHELF_ELEVATION_Z])
             xrot(SHELF_TILT_ANGLE)
                 cuboid([RUNNER_WIDTH, 28, RISER_THICKNESS], rounding = CORNER_R, anchor = TOP);
     }
