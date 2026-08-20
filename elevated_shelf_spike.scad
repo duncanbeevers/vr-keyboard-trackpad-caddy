@@ -181,26 +181,32 @@ module keyboard_lap_cradle() {
 
 module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
     total_len = (rear_y + REAR_JAW_WALL) - (front_y - FRONT_LIP_WALL);
+    hook_len = FRONT_LIP_WALL + FRONT_CATCH_DEPTH;
 
     diff() {
-        // 1. Full-length bottom runner rail with continuous, unmarred bottom fillets
+        // 1. Full-length bottom runner rail with continuous bottom fillets AND front vertical corner fillets
         translate([0, front_y - FRONT_LIP_WALL, 0])
-            cuboid([RUNNER_WIDTH, total_len, RUNNER_THICKNESS], rounding = CORNER_R, edges = [LEFT+BOT, RIGHT+BOT, FRONT+BOT, BACK+BOT], anchor = BOT+FRONT);
-
-        // 2. Monolithic Front Upright Hook Block: flat side faces coplanar with runner rail
-        translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
             cuboid(
-                [RUNNER_WIDTH, FRONT_LIP_WALL + FRONT_CATCH_DEPTH, FRONT_LIP_HEIGHT - RUNNER_THICKNESS],
+                [RUNNER_WIDTH, total_len, RUNNER_THICKNESS],
                 rounding = CORNER_R,
-                edges = [FRONT+TOP, BACK+TOP],
+                edges = [LEFT+BOT, RIGHT+BOT, FRONT+BOT, BACK+BOT, FRONT+LEFT, FRONT+RIGHT],
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Retention Pocket: Angled at KB_TILT_ANGLE (5.5°) matching resting keyboard slope
+        // 2. Monolithic Front Upright Hook Block: continuous front vertical corners and top roundings
+        translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
+            cuboid(
+                [RUNNER_WIDTH, hook_len, FRONT_LIP_HEIGHT - RUNNER_THICKNESS],
+                rounding = CORNER_R,
+                edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT],
+                anchor = BOT+FRONT
+            );
+
+        // 3. Subtractive Retention Pocket: Starts 1.0mm ahead of keyboard front face and tilted at 5.5 deg
         tag("remove")
-            translate([0, front_y + 0.4, RUNNER_THICKNESS])
+            translate([0, front_y - 1.0, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
-                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 3, FRONT_LIP_GAP + 0.4], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 8, FRONT_LIP_GAP + 0.8], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
 }
 
@@ -304,9 +310,9 @@ module trackpad_tray() {
     mid_h = (tray_front_h + tray_rear_h) / 2;
     wedge_angle = atan((tray_rear_h - tray_front_h) / outer_d);
 
-    // Power toggle position on Apple Magic Trackpad 2/3 (right of center port)
-    switch_center_x = 46.0;
-    switch_width = 16.0;
+    // Power toggle position on Apple Magic Trackpad 2/3 (22mm from right edge -> X = +58.25mm)
+    switch_center_x = TP_WIDTH / 2 - 22.0;
+    switch_width = 18.0;
 
     diff() {
         // 1. Main outer tray solid with rounded vertical corners
