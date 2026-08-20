@@ -157,9 +157,15 @@ module keyboard_lap_cradle() {
         translate([0, front_y + CROSSBRACE_WIDTH / 2 + 2, 0])
             cuboid([STRUT_SPACING + RUNNER_WIDTH, CROSSBRACE_WIDTH, RUNNER_THICKNESS], rounding = CORNER_R, except = [TOP], anchor = BOT);
 
-        // Middle crossbrace across lap span
-        translate([0, 0, 0])
-            cuboid([STRUT_SPACING + RUNNER_WIDTH, CROSSBRACE_WIDTH * 0.85, RUNNER_THICKNESS], rounding = CORNER_R, except = [TOP], anchor = BOT);
+        // Middle X-crossbrace across lap span
+        x_lap_crossbrace(
+            span_x = STRUT_SPACING,
+            y_front = front_y + CROSSBRACE_WIDTH / 2 + 2,
+            y_rear = rear_y - KB_BATTERY_BAR_DEPTH / 2,
+            bar_w = CROSSBRACE_WIDTH * 0.75,
+            thickness = RUNNER_THICKNESS,
+            r = CORNER_R
+        );
 
         // Rear crossbrace anchoring the battery clamp and riser base
         translate([0, rear_y - KB_BATTERY_BAR_DEPTH / 2, 0])
@@ -212,6 +218,28 @@ module rear_battery_jaw() {
         tag("remove")
             translate([0, -REAR_JAW_OVERHANG / 2 - 0.1, RUNNER_THICKNESS + KB_BATTERY_BAR_HEIGHT / 2])
                 cuboid([RUNNER_WIDTH + 1, REAR_JAW_OVERHANG + 0.2, KB_BATTERY_BAR_HEIGHT + 0.1], rounding = 1.0, edges = "Y", anchor = CENTER);
+    }
+}
+
+module x_lap_crossbrace(span_x, y_front, y_rear, bar_w, thickness, r) {
+    y_center = (y_front + y_rear) / 2;
+    dy = y_rear - y_front;
+    dx = span_x;
+    diag_len = hypot(dx, dy) + RUNNER_WIDTH;
+    angle = atan2(dy, dx);
+
+    translate([0, y_center, 0]) {
+        intersection() {
+            // Keep X-arms neatly contained within the outer footprint of runners and crossbraces
+            cuboid([span_x + RUNNER_WIDTH, dy + CROSSBRACE_WIDTH, thickness * 2], anchor = BOT);
+
+            union() {
+                zrot(angle)
+                    cuboid([diag_len, bar_w, thickness], rounding = r, except = [TOP], anchor = BOT);
+                zrot(-angle)
+                    cuboid([diag_len, bar_w, thickness], rounding = r, except = [TOP], anchor = BOT);
+            }
+        }
     }
 }
 
