@@ -60,10 +60,10 @@ STRUT_SPACING = 114.0;          // Spacing between left and right lap runners
 CORNER_R = 2.0;                 // Consistent global fillet/rounding radius
 
 /* [Keyboard Retention Hardware Settings] */
-FRONT_LIP_WALL = 6.0;           // Solid base wall thickness for front chin stop
-FRONT_CATCH_DEPTH = 2.2;        // Low-profile under-bezel catch tab
-FRONT_LIP_HEIGHT = RUNNER_THICKNESS + 5.8; // Low-profile total height (~10.8mm), flush/sub-flush with aluminum deck
-FRONT_WATERFALL_CHAMFER = 3.5;  // Ergonomic 45-degree wrist waterfall ramp facing operator
+FRONT_LIP_WALL = 5.5;           // Front wall thickness of continuous retaining chin
+FRONT_CATCH_DEPTH = 3.5;        // Overhang catch tab depth across full front span
+FRONT_LIP_GAP = 7.6;            // Snug 7.6mm sloped opening for 6.5mm keyboard front
+FRONT_LIP_HEIGHT = RUNNER_THICKNESS + FRONT_LIP_GAP + 2.2; // Total height (~14.8mm)
 
 REAR_JAW_WALL = 14.0;           // Heavy-duty structural rear fulcrum wall for maximum moment stiffness
 REAR_JAW_TOP_THICKNESS = 5.5;   // Thick top clamping beam resisting cantilever lifting loads
@@ -148,10 +148,13 @@ module keyboard_lap_cradle() {
     rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE;
 
     union() {
-        // Continuous lap runners with monolithic front J-hooks
+        // Continuous lap runners extending full length
         xcopies(spacing = STRUT_SPACING, n = 2) {
             single_monolithic_runner(front_y = front_y, rear_y = rear_y);
         }
+
+        // Full-width monolithic front retaining chin (140mm continuous beam)
+        continuous_front_retaining_chin(front_y = front_y);
 
         // Front crossbrace linking the runners (spans cleanly between runner centers)
         translate([0, front_y + CROSSBRACE_WIDTH / 2 + 2, 0])
@@ -179,36 +182,40 @@ module keyboard_lap_cradle() {
     }
 }
 
-module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
-    total_len = (rear_y + REAR_JAW_WALL) - (front_y - FRONT_LIP_WALL);
-    hook_len = FRONT_LIP_WALL + FRONT_CATCH_DEPTH;
-    hook_h = FRONT_LIP_HEIGHT - RUNNER_THICKNESS;
+module continuous_front_retaining_chin(front_y = -KB_DEPTH / 2) {
+    total_w = STRUT_SPACING + RUNNER_WIDTH; // 140.0mm full-width continuous beam
+    lip_depth = FRONT_LIP_WALL + FRONT_CATCH_DEPTH;
+    lip_rise = FRONT_LIP_HEIGHT - RUNNER_THICKNESS;
 
     diff() {
-        // 1. Full-length bottom runner rail with continuous bottom fillets AND front vertical corner fillets
-        translate([0, front_y - FRONT_LIP_WALL, 0])
-            cuboid(
-                [RUNNER_WIDTH, total_len, RUNNER_THICKNESS],
-                rounding = CORNER_R,
-                edges = [LEFT+BOT, RIGHT+BOT, FRONT+BOT, BACK+BOT, FRONT+LEFT, FRONT+RIGHT],
-                anchor = BOT+FRONT
-            );
-
-        // 2. Monolithic Low-Profile Front Upright Stop Block (smooth ergonomic wrist curve)
+        // 1. Full-width upright retaining hook bar (continuous 140mm wide)
         translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
             cuboid(
-                [RUNNER_WIDTH, hook_len, hook_h],
+                [total_w, lip_depth, lip_rise],
                 rounding = CORNER_R,
-                edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT],
+                edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT],
                 anchor = BOT+FRONT
             );
 
-        // 3. Subtractive Under-Bezel Pocket: Low-profile pocket with negative-draft chin lock
+        // 2. Full-width subtractive pocket angled at KB_TILT_ANGLE (5.5 deg)
         tag("remove")
             translate([0, front_y - 0.8, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
-                    cuboid([RUNNER_WIDTH + 2, FRONT_CATCH_DEPTH + 8, KB_FRONT_THICKNESS + 0.2], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
+                    cuboid([total_w + 4, FRONT_CATCH_DEPTH + 8, FRONT_LIP_GAP + 0.4], rounding = 1.0, edges = "Y", anchor = BOT+FRONT);
     }
+}
+
+module single_monolithic_runner(front_y = -KB_DEPTH / 2, rear_y = KB_DEPTH / 2 + KB_FIT_TOLERANCE) {
+    total_len = (rear_y + REAR_JAW_WALL) - (front_y - FRONT_LIP_WALL);
+
+    // Full-length bottom runner rail with continuous bottom fillets AND front vertical corner fillets
+    translate([0, front_y - FRONT_LIP_WALL, 0])
+        cuboid(
+            [RUNNER_WIDTH, total_len, RUNNER_THICKNESS],
+            rounding = CORNER_R,
+            edges = [LEFT+BOT, RIGHT+BOT, FRONT+BOT, BACK+BOT, FRONT+LEFT, FRONT+RIGHT],
+            anchor = BOT+FRONT
+        );
 }
 
 module rear_battery_jaw() {
