@@ -22,7 +22,7 @@ MX_MINI_CORNER_RADIUS  = 12.00;  // Sweeping corner rounding radius on main plat
 MX_MINI_BAR_WIDTH      = 274.00; // Battery bar width - extends to body corner fillets with 0 straight run (mm)
 MX_MINI_BAR_PROTRUSION = MX_MINI_TOTAL_DEPTH - MX_MINI_BODY_DEPTH; // ~12.95 mm protruding out back
 MX_MINI_BAR_DEPTH      = 26.00;  // Total front-to-back depth of battery bar (mm)
-MX_MINI_BAR_RADIUS     = 3.50;   // Corner and edge rounding on battery bar (mm)
+MX_MINI_BAR_BOT_R      = 4.50;   // Gentle bottom arch round-over (mm)
 
 /* [Keybed Geometry & Individual Keys] */
 MX_MINI_KEYBED_WIDTH   = 283.00;
@@ -44,7 +44,7 @@ MX_MINI_LED_SIZE            = [3.8, 1.4, 0.2]; // Pill dimensions [width, depth,
 
 /* [Rubber Feet] */
 MX_MINI_FRONT_FOOT_SIZE     = [16.0, 4.5, 0.8];
-MX_MINI_REAR_FOOT_SIZE      = [18.0, 6.0, 0.8];
+MX_MINI_REAR_FOOT_SIZE      = [24.0, 6.0, 0.8];
 
 /* [Tolerances & Quality] */
 $fn = 64;
@@ -102,15 +102,13 @@ module mx_keys_mini(anchor = CENTER, spin = 0, orient = UP, colors = true) {
                             }
                         }
 
-                        // 2. Protruding Rear Battery & Electronics Bar (Continuous-height vertical wall surrounding battery pack)
+                        // 2. Protruding Rear Battery & Electronics Bar (Silo-vaulted stadium geometry with continuous-height vertical walls)
                         color(c_bar_top) {
-                            translate([0, y_bar_center, -bar_drop]) {
-                                cuboid(
-                                    [MX_MINI_BAR_WIDTH, MX_MINI_BAR_DEPTH, bar_total_h],
-                                    rounding = MX_MINI_BAR_RADIUS,
-                                    edges = [BACK+LEFT, BACK+RIGHT, FWD+LEFT, FWD+RIGHT, BOT+FWD, BOT+BACK, BOT+LEFT, BOT+RIGHT],
-                                    anchor = BOT
-                                );
+                            hull() {
+                                translate([-(MX_MINI_BAR_WIDTH - MX_MINI_BAR_DEPTH) / 2, y_bar_center, -bar_drop])
+                                    cyl(d = MX_MINI_BAR_DEPTH, h = bar_total_h, rounding1 = MX_MINI_BAR_BOT_R, rounding2 = 0, anchor = BOT);
+                                translate([(MX_MINI_BAR_WIDTH - MX_MINI_BAR_DEPTH) / 2, y_bar_center, -bar_drop])
+                                    cyl(d = MX_MINI_BAR_DEPTH, h = bar_total_h, rounding1 = MX_MINI_BAR_BOT_R, rounding2 = 0, anchor = BOT);
                             }
                         }
 
