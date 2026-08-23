@@ -75,10 +75,11 @@ The assembly is an ergonomic lap dock engineered to securely hold a **Logitech M
   - Width: `RUNNER_WIDTH = 26.0mm`; Thickness: `RUNNER_THICKNESS = 5.0mm`; Spacing: `STRUT_SPACING = 114.0mm`.
   - All bottom perimeter edges have `CORNER_R = 2.0mm` round-overs for comfort on thighs/legs.
 - **Continuous Front Retaining Chin (`continuous_front_retaining_chin`)**:
-  - Full-width monolithic beam spanning $140.0\text{ mm}$ across the entire front of both runners.
-  - Subtractive retention pocket angled at `KB_TILT_ANGLE = 5.5°` with a calibrated `FRONT_LIP_GAP = 7.6mm` opening.
-  - **Trough Floor Continuity**: The internal floor of the front pocket is $100\%$ flat and coplanar with the top face of the runner struts (`Z = RUNNER_THICKNESS = 5.0mm`), preventing any ridge or step.
+  - Full-width monolithic beam spanning $140.0\text{ mm}$ across the entire front of both runners, grounded directly from $Z = 0$ (the print bed) to $Z = \text{FRONT\_LIP\_HEIGHT} = 14.8\text{ mm}$.
+  - Subtractive retention pocket carved above `RUNNER_THICKNESS = 5.0mm` angled at `KB_TILT_ANGLE = 5.5°` with a calibrated `FRONT_LIP_GAP = 7.6mm` opening.
+  - **Trough Floor Continuity**: The internal floor of the front pocket is $100\%$ flat and coplanar with the top face of the runner struts (`Z = RUNNER_THICKNESS = 5.0mm`), preventing any ridge or step, while the base beneath it is a solid grounded beam resting on the build plate.
   - Overhang catch depth: `FRONT_CATCH_DEPTH = 3.5mm`.
+  - All outer ground-contact edges feature matching `CORNER_R = 2.0mm` fillets (`FRONT+BOT`, `LEFT+BOT`, `RIGHT+BOT`).
 - **Lap Crossbracing (`x_lap_crossbrace`)**:
   - Diagonal X-truss bridging the left and right runners between the front crossbar and rear battery anchor.
   - Bounds remain cleanly inside runner boundaries so the outer side rails remain smooth.
