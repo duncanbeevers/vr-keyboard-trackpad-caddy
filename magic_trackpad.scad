@@ -18,9 +18,9 @@ TP_GLASS_THICKNESS = 0.80;   // Frosted glass top surface thickness (mm)
 TP_PORT_TYPE        = "usb_c"; // ["usb_c": USB-C Port (Magic Trackpad 3 / 2024), "lightning": Lightning Port (Magic Trackpad 2)]
 TP_PORT_WIDTH       = 9.00;    // Port cutout width (mm)
 TP_PORT_HEIGHT      = 3.50;    // Port cutout height (mm)
-TP_SWITCH_OFFSET    = 22.00;   // Distance from right edge to power switch center (mm)
-TP_SWITCH_WIDTH     = 11.00;   // Power switch width (mm)
-TP_SWITCH_HEIGHT    = 3.80;    // Power switch height (mm)
+TP_SWITCH_OFFSET    = 18.00;   // Distance from right edge to power switch center (mm) - [Apple physical spec: 18.0 mm]
+TP_SWITCH_WIDTH     = 8.50;    // Power switch cavity width (mm) - [Apple physical spec: 8.5 mm]
+TP_SWITCH_HEIGHT    = 3.20;    // Power switch cavity height (mm) - [Apple physical spec: 3.2 mm]
 TP_RF_WINDOW_WIDTH  = 26.00;   // Antenna window width (mm)
 
 /* [Rubber Feet] */
@@ -114,19 +114,23 @@ module magic_trackpad(anchor = CENTER, spin = 0, orient = UP, colors = true, dar
                 }
             }
 
-            // 3. Power Switch Slider on Rear Face (with green indicator)
+            // 3. Power Switch Slider on Rear Face (with green ON indicator)
             translate([
                 TP_WIDTH/2 - TP_SWITCH_OFFSET,
                 TP_DEPTH/2 - 0.2,
                 (TP_REAR_HEIGHT - TP_GLASS_THICKNESS) / 2
             ]) {
-                // Cavity back
+                // Cavity background
                 color(c_dark)
-                    cuboid([TP_SWITCH_WIDTH - 0.6, 0.6, TP_SWITCH_HEIGHT - 0.6], anchor = CENTER);
-                // Active switch pip
+                    cuboid([TP_SWITCH_WIDTH - 0.4, 0.6, TP_SWITCH_HEIGHT - 0.4], rounding = 0.8, edges = "Y", anchor = CENTER);
+                // Active green indicator stripe (revealed when switch is ON / right)
                 color(c_accent)
-                    translate([2.0, 0.2, 0])
-                        cuboid([4.0, 0.6, TP_SWITCH_HEIGHT - 0.8], rounding = 0.5, edges = "Y", anchor = CENTER);
+                    translate([-1.8, 0.1, 0])
+                        cuboid([2.5, 0.4, TP_SWITCH_HEIGHT - 0.8], anchor = CENTER);
+                // Toggle slider button knob
+                color(c_metal)
+                    translate([1.5, 0.2, 0])
+                        cuboid([4.5, 0.6, TP_SWITCH_HEIGHT - 0.6], rounding = 0.5, edges = "Y", anchor = CENTER);
             }
 
             // 4. Charging Port Interior (Lightning or USB-C)

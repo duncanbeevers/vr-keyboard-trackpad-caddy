@@ -323,8 +323,8 @@ module trackpad_tray() {
     mid_h = (tray_front_h + tray_rear_h) / 2;
     wedge_angle = atan((tray_rear_h - tray_front_h) / outer_d);
 
-    // Power toggle position on Apple Magic Trackpad 2/3 (22mm from right edge -> X = +58.25mm)
-    switch_center_x = TP_WIDTH / 2 - 22.0;
+    // Power toggle position on Apple Magic Trackpad 2/3 (18.0mm from right edge -> X = +62.25mm)
+    switch_center_x = TP_WIDTH / 2 - 18.0;
     switch_width = 18.0;
 
     diff() {
