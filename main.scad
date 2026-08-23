@@ -185,19 +185,18 @@ module keyboard_lap_cradle() {
 module continuous_front_retaining_chin(front_y = -KB_DEPTH / 2) {
     total_w = STRUT_SPACING + RUNNER_WIDTH; // 140.0mm full-width continuous beam
     lip_depth = FRONT_LIP_WALL + FRONT_CATCH_DEPTH;
-    lip_rise = FRONT_LIP_HEIGHT - RUNNER_THICKNESS;
 
     diff() {
-        // 1. Full-width upright retaining hook bar (continuous 140mm wide)
-        translate([0, front_y - FRONT_LIP_WALL, RUNNER_THICKNESS])
+        // 1. Full-width upright retaining hook bar grounded from Z = 0 (unified with print bed)
+        translate([0, front_y - FRONT_LIP_WALL, 0])
             cuboid(
-                [total_w, lip_depth, lip_rise],
+                [total_w, lip_depth, FRONT_LIP_HEIGHT],
                 rounding = CORNER_R,
-                edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT],
+                edges = [FRONT+TOP, BACK+TOP, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT, FRONT+BOT, LEFT+BOT, RIGHT+BOT],
                 anchor = BOT+FRONT
             );
 
-        // 2. Full-width subtractive pocket angled at KB_TILT_ANGLE (5.5 deg)
+        // 2. Full-width subtractive pocket angled at KB_TILT_ANGLE (5.5 deg) above RUNNER_THICKNESS
         tag("remove")
             translate([0, front_y - 0.8, RUNNER_THICKNESS])
                 xrot(KB_TILT_ANGLE)
