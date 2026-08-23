@@ -1,0 +1,184 @@
+include <BOSL2/std.scad>
+include <BOSL2/joiners.scad>
+
+/* [Trackpad Settings] */
+TRACKPAD_WALL_THICKNESS = 3;
+TRACKPAD = [160.5 + TRACKPAD_WALL_THICKNESS * 2, 115.5 + TRACKPAD_WALL_THICKNESS * 2, 12];
+TRACKPAD_CORNER_RADIUS = 10;
+TRACKPAD_FRAME_FRONT_HEIGHT = 5;
+TRACKPAD_CHARGING_PORT = [12, TRACKPAD_WALL_THICKNESS, 6.8];
+TRACKPAD_POWER_SWITCH_PORT = [21, 4, TRACKPAD.z / 1.5];
+TRACKPAD_OUTER_ROUNDING = 6;
+TRACKPAD_INNER_ROUNDING = 4;
+FOOTPAD_SUPPORT = [15, 15, 2];
+PORT_ROUNDING_RADIUS = 2;
+
+/* [Keyboard Strut settings] */
+STRUT_TINE_DEPTH = 5;
+STRUT = [20, 130 + STRUT_TINE_DEPTH, 5];
+STRUT_TINE_REAR = [STRUT.x, STRUT_TINE_DEPTH, 15]; 
+STRUT_ROUNDING = 1;
+STRUT_BATTERY_CHANNEL_WIDTH = 25;
+STRUT_SEPARATION = 70;
+STRUT_CROSSBRACE = [STRUT_SEPARATION, 10, STRUT.z / 1.5]; 
+STRUT_CROSSBRACE_OFFSET = 20;
+CLIP_SIZE = 3;
+SKID_OVERLAP = 10;
+SKID_RUNNER = [STRUT.x, TRACKPAD.y + SKID_OVERLAP, STRUT.z];
+BUTTRESS_WEDGE = [SKID_RUNNER.x - STRUT_ROUNDING * 2, 40, SKID_RUNNER.z - FOOTPAD_SUPPORT.z];
+
+/* [Dovetail settings] */
+DOVETAIL_WIDTH = STRUT.x / 1.6;  // Total width of the dovetail joint
+DOVETAIL_LENGTH = 5;  // How far the dovetail neck extends along the Y-axis
+DOVETAIL_ANGLE = 20;  // Locking flare angle
+DOVETAIL_TAPER = 5;
+DOVETAIL_Z = -TRACKPAD.z / 2;  // Keep dovetails anchored to the bottom of the struts.
+SPREAD = DOVETAIL_LENGTH + 10;
+
+/* [Hidden] */
+$fn = 72;
+$slop = 0.05; // 3D printing tolerance gap handled natively by BOSL2 joiners
+
+// Calculate global Y split coordinate location
+Y_CUT_PLANE = (TRACKPAD.y + STRUT.y) / 2;
+
+// Main Pipeline
+partition_and_dovetail(y_position = Y_CUT_PLANE, spread = SPREAD) assembly();
+
+module assembly() {
+    frame() position(BACK+BOT) struts(anchor = FWD+BOT);
+}
+
+// Partitioning module using bounding box masking to isolate halves
+module partition_and_dovetail(y_position, spread) {
+    // 1. FRONT HALF ASSEMBLY (Trackpad frame)
+    intersection() {
+        children();
+        translate([0, y_position - 500, 0]) cube([1000, 1000, 1000], center=true);
+    }
+
+    // Fuse solid male tabs directly onto the cut face of each strut (+Y direction)
+    xcopies(spacing = STRUT_SEPARATION, n = 2)
+        translate([0, y_position, DOVETAIL_Z])
+            xrot(-90)
+                dovetail(gender="male", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK);
+
+    // 2. BACK HALF ASSEMBLY (Moves Backward)
+    translate([0, spread, 0]) {
+        difference() {
+            intersection() {
+                children();
+                translate([0, y_position + 500, 0]) cube([1000, 1000, 1000], center=true);
+            }
+            // yrot(180) corrects the internal female tracking direction to run upward (+Z)
+            xcopies(spacing = STRUT_SEPARATION, n = 2)
+                translate([0, y_position, DOVETAIL_Z])
+                    yrot(180) xrot(90)
+                        // Slide thickness gets a tiny over-height modifier (+0.1) for a clean face through-cut
+                        dovetail(gender="female", w=DOVETAIL_WIDTH, h=DOVETAIL_LENGTH, slide=STRUT.z + 0.1, angle=DOVETAIL_ANGLE, taper=DOVETAIL_TAPER, anchor=BOTTOM+BACK, $slop=$slop);
+        }
+    }
+}
+
+// Trackpad frame with port notches
+module frame(anchor = CENTER, spin=0, orient=UP) {
+    attachable(anchor, spin, orient, size = TRACKPAD) {
+        union() {
+            diff() {
+                // 1. Trackpad Frame
+                rect_tube(size=[TRACKPAD.x, TRACKPAD.y], h=TRACKPAD.z, wall=TRACKPAD_WALL_THICKNESS, rounding=TRACKPAD_CORNER_RADIUS, anchor = CENTER);
+
+                // 2. Continuous reinforcement band attached to frame walls at bottom
+                position(BOT)
+                rect_tube(size=[TRACKPAD.x - 2*TRACKPAD_WALL_THICKNESS, TRACKPAD.y - 2*TRACKPAD_WALL_THICKNESS],
+                          h=FOOTPAD_SUPPORT.z, wall=20, rounding=TRACKPAD_OUTER_ROUNDING, irounding=TRACKPAD_INNER_ROUNDING, anchor=BOT);
+
+                // 3. Trackpad Power Switch Port    
+                position(BACK+RIGHT+TOP)
+                    move([
+                        PORT_ROUNDING_RADIUS,
+                        PORT_ROUNDING_RADIUS,
+                        0
+                    ])
+                    tag("remove")
+                    rounded_prism(
+                        rect(
+                            [
+                                TRACKPAD_POWER_SWITCH_PORT.x + (PORT_ROUNDING_RADIUS * 2),
+                                TRACKPAD_POWER_SWITCH_PORT.y + (PORT_ROUNDING_RADIUS * 2)
+                            ]
+                        ),
+                        height = TRACKPAD_POWER_SWITCH_PORT.z,
+                        k = 0.93,
+                        joint_bot = PORT_ROUNDING_RADIUS,
+                        joint_top = -PORT_ROUNDING_RADIUS,
+                        joint_sides = 0.01,
+                        anchor = TOP+RIGHT+BACK
+                    );
+
+                // 4. Trackpad Charging Port
+                position(BACK) tag("remove")
+                    back(0.1)
+                    cuboid(TRACKPAD_CHARGING_PORT + [0, 0.2, 0], rounding = PORT_ROUNDING_RADIUS, edges = "Y", anchor = BACK);
+
+                // 5.  Profiling Wedge
+                position(TOP) yrot(180) tag("remove")
+                down(0.01)
+                wedge(TRACKPAD+[0.1,0.1,-TRACKPAD_FRAME_FRONT_HEIGHT], anchor = BOT);
+            }
+        }
+        children();
+    }
+}
+
+// 6. Struts and Rear Fork Assembly
+module struts(anchor = CENTER, spin=0, orient=UP) {
+    attachable(anchor, spin, orient, size = [STRUT_SEPARATION + 1 * STRUT.x, STRUT.y, STRUT.z]){
+        union() {
+            xcopies(n = 2, spacing = STRUT_SEPARATION) {
+                diff() {
+                    cuboid(STRUT, rounding=STRUT_ROUNDING, except=[FRONT, TOP]) {
+                        rear_tine_and_clip();
+                        // Forward skid runner extending to front of trackpad frame (sits below strut)
+                        position(FWD+BOT)
+                        move([0, -TRACKPAD.y, FOOTPAD_SUPPORT.z])
+                        cuboid(
+                            SKID_RUNNER,
+                            rounding=STRUT_ROUNDING,
+                            edges=[BOTTOM+LEFT, BOTTOM+RIGHT, BACK+LEFT, BACK+RIGHT],
+                            anchor=FRONT+TOP
+                        );
+                    }
+
+                    tag("remove")
+                    position(FWD+BOT)
+                    wedge([SKID_RUNNER.x + 0.1, TRACKPAD.y + 0.1, SKID_RUNNER.z - FOOTPAD_SUPPORT.z + 0.1], anchor = TOP+BACK);
+
+                    position(FWD+BOT)
+                    yrot(180)
+                    move([0, SKID_OVERLAP, 0])
+                    wedge(BUTTRESS_WEDGE, anchor=BOTTOM+FRONT);
+                }
+            }
+
+            // Crossbrace between the two struts.        
+            position(BOT) back(STRUT_CROSSBRACE_OFFSET)
+                cuboid(STRUT_CROSSBRACE, rounding=STRUT_ROUNDING, except = [LEFT,RIGHT], anchor = BOT);
+
+            // Crossbrace connecting the two rear tines
+            position(BACK+BOT)
+                cuboid(STRUT_CROSSBRACE,
+                       rounding=STRUT_ROUNDING, except=[LEFT,RIGHT], anchor=BACK+BOT);
+        }
+        children();
+    }
+}
+
+module rear_tine_and_clip(anchor = CENTER, spin = 0, orient = UP) {
+    // Far rear tine + clip
+    align(TOP,BACK)
+    cuboid(STRUT_TINE_REAR, rounding=STRUT_ROUNDING, except=[BOT,FRONT])
+
+    position(TOP+FRONT)
+    cuboid([STRUT.x,CLIP_SIZE,CLIP_SIZE], except=[BACK], rounding=STRUT_ROUNDING, anchor=BACK+TOP);
+}
